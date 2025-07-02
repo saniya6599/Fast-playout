@@ -177,9 +177,9 @@ class MeltedClient:
                          #getting on air guid index for autorecovery
                         if previous_on_air_guid is not None:
                          self.global_context.set_value("onair_indice",df[df['GUID'] == previous_on_air_guid].index[0])
-                        # #  shorten the df, only 10 previously played rows should be visible
-                        #  if int(self.global_context.get_value("onair_indice")) > 10:
-                        #   self.shortened_df(current_on_air_guid)
+                        #  shorten the df, only 10 previously played rows should be visible
+                         if int(self.global_context.get_value("onair_indice")) > 10:
+                          self.shortened_df(current_on_air_guid)
                         
                         
                         
