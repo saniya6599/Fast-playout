@@ -1,0 +1,23 @@
+{
+    "playserver": "OVERLAY",
+    "playchannel": "2",
+    "playlayer": "16",
+    "webplayout": "15",
+    "steps": "2",
+    "out": "5000",
+    "uicolor": "7",
+    "relativeTemplatePath": "/softpix/Template_Pack_1.1/NAME_RIGHT.html",
+    "DataFields": [
+      {"field": "f0", "value": "hellloooooooooo"},
+      {"field": "f1", "value": "GFX TESTING"},
+      {
+        "field": "f99",
+        "ftype": "filelist",
+        "title": "Visual theme",
+        "extension": "css",
+        "value": "./themes/default.css"
+      }
+    ],
+    "command": "play"
+  }
+  
