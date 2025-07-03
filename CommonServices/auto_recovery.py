@@ -124,7 +124,7 @@ class AutoRecovery:
             sliced_df.loc[:, "GUID"] = ""
             # sliced_df["playlist"] = ""
 
-            recovery_dir = os.path.join(self.global_context.get_value("PlaylistLoc"),'Recovery') or "./recovery"
+            recovery_dir = os.path.join(self.global_context.get_value("PlaylistLoc")) or "./recovery"
             # Create the Recovery folder if it doesn't exist
             if not os.path.exists(recovery_dir):
                 os.makedirs(recovery_dir)
