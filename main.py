@@ -117,6 +117,7 @@ def main():
             from Modules.Playlist import delete_appended_playlist
             
             result = delete_appended_playlist.delete(command,client)  
+            global_context.get_value('current_playlists').remove(command.split('^_^')[2])
             tcp_connection.send_message(conn, result)
         
         elif "APPEND-PLAYLIST" in command : 

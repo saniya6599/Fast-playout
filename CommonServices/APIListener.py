@@ -242,8 +242,10 @@ class APIListener:
                     if if_exists:
                         # Load the DataFrame from the specified file
                         print("Playlist exists!")
-                        playlist_index = self.df.find_index_by_reckon_key(os.path.join(self.global_context.get_value("PlaylistLoc"),'Recovery', playlist), current_reckonkey)
-                        self.df.load_dataframe(os.path.join(self.global_context.get_value("PlaylistLoc"),'Recovery', playlist),playlist_index)
+                        playlist_index = self.df.find_index_by_reckon_key(os.path.join(self.global_context.get_value("PlaylistLoc"), playlist), current_reckonkey)
+                        self.df.load_dataframe(os.path.join(self.global_context.get_value("PlaylistLoc"), playlist),playlist_index)
+                        # playlist_index = self.df.find_index_by_reckon_key(os.path.join(self.global_context.get_value("PlaylistLoc"),'Recovery', playlist), current_reckonkey)
+                        # self.df.load_dataframe(os.path.join(self.global_context.get_value("PlaylistLoc"),'Recovery', playlist),playlist_index)
                         self.global_context.set_value('channel_props',playlist)
                         self.global_context.set_value('current_playlists', [playlist])
                         
