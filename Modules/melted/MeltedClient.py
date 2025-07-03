@@ -50,6 +50,7 @@ class MeltedClient:
         self.tn = None   #common terminal
         self.tn2=None    # usta status terminal
         self.tn3=None    # skip terminal
+        self.tn4= None   #list ubit content terminal
 
         self.db_verify = Database_verification()
 
@@ -84,6 +85,7 @@ class MeltedClient:
             self.tn = telnetlib.Telnet(self.global_context.get_value("host"), self.server_port)
             self.tn2 = telnetlib.Telnet(self.global_context.get_value("host"),self.server_port)
             self.tn3 = telnetlib.Telnet(self.global_context.get_value("host"),self.server_port)
+            self.tn4 = telnetlib.Telnet(self.global_context.get_value("host"),self.server_port)
             self.connected = True
             return True
         except Exception as e:
@@ -173,6 +175,12 @@ class MeltedClient:
                         
                         df = self.df_manager.get_dataframe()
                         
+                        
+                        
+                        #list unit 
+                        list_of_unit= self.get_unit_ids_from_melted("LIST U0")
+                        list_of_playout=self.get_inventory_from_guids_in_order()
+                        print(list_of_unit)
                         
                          #getting on air guid index for autorecovery
                         if previous_on_air_guid is not None:
@@ -1677,6 +1685,60 @@ class MeltedClient:
         print("End of file reached while reading USTA U0 response.")
         return None
 
+    def get_unit_ids_from_melted(self,command):
+        try:
+            
+
+            if not self.connected:
+                print("Not connected to playback server. Trying to connect...")
+                if not self.init_connection():
+                    return []
+
+            # Send LIST U0 command
+            self.tn4.write(command.encode('ascii') + b"\n")
+
+            # Read full response
+            time.sleep(0.2)  # short delay to allow response to accumulate
+            response = self.tn4.read_very_eager().decode("utf-8").strip()
+
+            if "201 OK" not in response:
+                print("Unexpected response or failed LIST U0 command")
+                return []
+
+            # Split into lines and parse media IDs
+            lines = response.splitlines()
+            ids = []
+
+            for line in lines:
+                if '"' in line:
+                    try:
+                        filename = line.split('"')[1].strip('/')
+                        media_id = filename.split('.')[0]
+                        ids.append(media_id)
+                    except IndexError:
+                        continue  # skip malformed lines
+
+            return ids
+
+        except Exception as e:
+            print(f"Error reading LIST U0 from Melted: {e}")
+            return []
+
+    def get_inventory_from_guids_in_order(df):
+        try:
+            # Filter rows that match GUIDs and preserve order
+            inventory_list = []
+            for guid in appended_guids:
+                matched_rows = df[df["GUID"] == guid]
+                if not matched_rows.empty:
+                    inventory = matched_rows.iloc[0]["Inventory"]
+                    inventory_list.append(inventory)
+            return inventory_list
+        except Exception as e:
+            print(f"Error extracting inventory in GUID order: {e}")
+            return []
+
+   
     def Load_unload_logo(self) :
 
        # Toggle the value of is_logo_overlayed
