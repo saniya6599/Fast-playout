@@ -237,7 +237,8 @@ class APIListener:
                     self.global_context.set_value("automsg","automation_stop")
                     self.global_context.set_value("recovery_som",recovery_som)
 
-                    if_exists =  self.df.check_playlist(os.path.join(self.global_context.get_value("PlaylistLoc"),'Recovery'), playlist)
+                    if_exists =  self.df.check_playlist(os.path.join(self.global_context.get_value("PlaylistLoc")), playlist)
+                    # if_exists =  self.df.check_playlist(os.path.join(self.global_context.get_value("PlaylistLoc"),'Recovery'), playlist)
                     
                     if if_exists:
                         # Load the DataFrame from the specified file
