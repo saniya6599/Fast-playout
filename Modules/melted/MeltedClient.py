@@ -1018,99 +1018,171 @@ class MeltedClient:
     #             print(f"Error in Update missing : {e}")
     #             logger.error(f"Error in Update missing :{e}")
 
-    def update_missing_verify(self):
-       try:
+    # def update_missing_verify(self):
+    #    try:
            
-        df = self.df_manager.get_dataframe()
+    #     df = self.df_manager.get_dataframe()
 
-        df_primary = df[~df['Type'].str.lower().isin(['sec', 'secondary'])].reset_index(drop=True)
+    #     df_primary = df[~df['Type'].str.lower().isin(['sec', 'secondary'])].reset_index(drop=True)
         
-        #unique after onair only
-        onair_indice=self.global_context.get_value('previous_on_air_primary_index')
+    #     #unique after onair only
+    #     onair_indice=self.global_context.get_value('previous_on_air_primary_index')
        
-        unique_inventory_ids= df.loc[(df.index > (onair_indice if onair_indice not in (None, '') else -1)) & ~df["Type"].str.lower().isin(['sec', 'secondary']), "Inventory"].unique()
+    #     unique_inventory_ids= df.loc[(df.index > (onair_indice if onair_indice not in (None, '') else -1)) & ~df["Type"].str.lower().isin(['sec', 'secondary']), "Inventory"].unique()
 
-        verified_ids = []  
+    #     verified_ids = []  
 
-        content_loc = self.global_context.get_value('ContentLoc')
+    #     content_loc = self.global_context.get_value('ContentLoc')
 
-        for inventory_id in unique_inventory_ids:
+    #     for inventory_id in unique_inventory_ids:
 
-          df = self.df_manager.get_dataframe()
-          filtered_df = df[
-            (df['Type'].str.lower().isin(['pri', 'primary'])) &
-            (~df['Inventory'].str.startswith('LIVE', na=False)) &
-            (df['Status'] == 'N.A')   #comment this
-        ]
+    #       df = self.df_manager.get_dataframe()
+    #       filtered_df = df[
+    #         (df['Type'].str.lower().isin(['pri', 'primary'])) &
+    #         (~df['Inventory'].str.startswith('LIVE', na=False)) &
+    #         (df['Status'] == 'N.A')   #comment this
+    #     ]
         
-          filtered_df_ok = df[
-            (df['Type'].str.lower().isin(['pri', 'primary'])) &
-            (~df['Inventory'].str.startswith('LIVE', na=False)) &
-            (df['Status'] == 'O.K')
-        ].reset_index(drop=True)
+    #       filtered_df_ok = df[
+    #         (df['Type'].str.lower().isin(['pri', 'primary'])) &
+    #         (~df['Inventory'].str.startswith('LIVE', na=False)) &
+    #         (df['Status'] == 'O.K')
+    #     ].reset_index(drop=True)
 
-          df_primary = df[~df['Type'].str.lower().isin(['sec', 'secondary'])].reset_index(drop=True)
+    #       df_primary = df[~df['Type'].str.lower().isin(['sec', 'secondary'])].reset_index(drop=True)
             
-          try:
+    #       try:
                
-            clip_ext = self.get_file_extension(inventory_id)
-            clip_path = os.path.join(content_loc, f"{inventory_id}{clip_ext}")
+    #         clip_ext = self.get_file_extension(inventory_id)
+    #         clip_path = os.path.join(content_loc, f"{inventory_id}{clip_ext}")
                                     
-            if self.is_file_stable(clip_path):
+    #         if self.is_file_stable(clip_path):
                 
-                if any(filtered_df.loc[filtered_df['Inventory'] == inventory_id, 'Status'] == 'N.A'):
-                    df.loc[df['Inventory'] == inventory_id, 'Status'] = 'O.K'
-                    df_primary.loc[df_primary['Inventory'] == inventory_id, 'Status'] = 'O.K'
-                    self.db_verify.verify_content(inventory_id)
+    #             if any(filtered_df.loc[filtered_df['Inventory'] == inventory_id, 'Status'] == 'N.A'):
+    #                 df.loc[df['Inventory'] == inventory_id, 'Status'] = 'O.K'
+    #                 df_primary.loc[df_primary['Inventory'] == inventory_id, 'Status'] = 'O.K'
+    #                 self.db_verify.verify_content(inventory_id)
 
 
-                    updated =  df_primary[df_primary['Status'] != 'N.A'].reset_index(drop=True)
-                    verified_indexes = updated[updated['Inventory']==inventory_id].index.tolist()
-                    # verified_indexes = df_primary[df_primary['Inventory'] == inventory_id].index.tolist()
-                    # verified_indexes = df_primary[
-                    #                 (df_primary['Status'].str.upper() != 'N.A') & (df_primary['Inventory'] == inventory_id)
-                    #             ].reset_index(drop=True).index.tolist()
+    #                 updated =  df_primary[df_primary['Status'] != 'N.A'].reset_index(drop=True)
+    #                 verified_indexes = updated[updated['Inventory']==inventory_id].index.tolist()
+    #                 # verified_indexes = df_primary[df_primary['Inventory'] == inventory_id].index.tolist()
+    #                 # verified_indexes = df_primary[
+    #                 #                 (df_primary['Status'].str.upper() != 'N.A') & (df_primary['Inventory'] == inventory_id)
+    #                 #             ].reset_index(drop=True).index.tolist()
                                                                 
                     
-                    self.insert_update_missing_into_melted(verified_indexes,updated)
-                    # logger.info(f"Verified IDs after update missing: {verified_ids}")
-                    self.df_manager.toggle_up_dataframe()
-                    self.global_context.set_value('sync', 1)
-                    # verified_ids.extend(verified_indexes)
-                    logger.info(f"Updated status to O.K for : {inventory_id}")
-                    break
+    #                 self.insert_update_missing_into_melted(verified_indexes,updated)
+    #                 # logger.info(f"Verified IDs after update missing: {verified_ids}")
+    #                 self.df_manager.toggle_up_dataframe()
+    #                 self.global_context.set_value('sync', 1)
+    #                 # verified_ids.extend(verified_indexes)
+    #                 logger.info(f"Updated status to O.K for : {inventory_id}")
+    #                 break
                              
-            else : 
-                #for ids that are present during appending procedure but gets deleted/missing
-                if any(df_primary.loc[df_primary['Inventory'] == inventory_id, 'Status'] == 'O.K'):
-                    logger.warning(f"File : {inventory_id} was marked O.K but is now missing or unstable. Marking as N.A.")
+    #         else : 
+    #             #for ids that are present during appending procedure but gets deleted/missing
+    #             if any(df_primary.loc[df_primary['Inventory'] == inventory_id, 'Status'] == 'O.K'):
+    #                 logger.warning(f"File : {inventory_id} was marked O.K but is now missing or unstable. Marking as N.A.")
                    
-                    # indexes = df_primary[df_primary['Inventory'] == inventory_id].index  
-                    indexes=filtered_df_ok[(filtered_df_ok['Inventory'] == inventory_id)].index
-                    self.remove_missing_from_melted(indexes)
-                    df.loc[df['Inventory'] == inventory_id, 'Status'] = 'N.A'
+    #                 # indexes = df_primary[df_primary['Inventory'] == inventory_id].index  
+    #                 indexes=filtered_df_ok[(filtered_df_ok['Inventory'] == inventory_id)].index
+    #                 self.remove_missing_from_melted(indexes)
+    #                 df.loc[df['Inventory'] == inventory_id, 'Status'] = 'N.A'
                 
-                #for ids which where missing from the start and are still misiing/downloading
-                row_indexes = filtered_df[filtered_df['Inventory'] == inventory_id].index  
-                for row_index in row_indexes:
-                    self.df_manager.update_row(row_index, 'Status', "N.A")
-                logger.warning(f"File not found/still downloading for inventory ID: {inventory_id}, keeping status as N.A")
-          except Exception as file_check_ex:
-               logger.error(f"Error checking file existence for inventory ID {inventory_id}: {file_check_ex}")
+    #             #for ids which where missing from the start and are still misiing/downloading
+    #             row_indexes = filtered_df[filtered_df['Inventory'] == inventory_id].index  
+    #             for row_index in row_indexes:
+    #                 self.df_manager.update_row(row_index, 'Status', "N.A")
+    #             logger.warning(f"File not found/still downloading for inventory ID: {inventory_id}, keeping status as N.A")
+    #       except Exception as file_check_ex:
+    #            logger.error(f"Error checking file existence for inventory ID {inventory_id}: {file_check_ex}")
 
                     
-        # Run database verification on verified IDs
-        # if verified_ids:
-        #         try:
+    #     # Run database verification on verified IDs
+    #     # if verified_ids:
+    #     #         try:
                    
-        #             self.insert_update_missing_into_melted(verified_ids)
-        #             logger.info(f"Verified IDs after update missing: {verified_ids}")
-        #             self.df_manager.toggle_up_dataframe()
-        #             self.global_context.set_value('sync', 1)
-        #         except Exception as db_ex:
-        #             logger.critical(f"Database verification or server update failed: {db_ex}")
-       except Exception as ex:
+    #     #             self.insert_update_missing_into_melted(verified_ids)
+    #     #             logger.info(f"Verified IDs after update missing: {verified_ids}")
+    #     #             self.df_manager.toggle_up_dataframe()
+    #     #             self.global_context.set_value('sync', 1)
+    #     #         except Exception as db_ex:
+    #     #             logger.critical(f"Database verification or server update failed: {db_ex}")
+    #    except Exception as ex:
+    #         logger.critical(f"Critical error in update_missing_verify: {ex}")
+    
+    def update_missing_verify(self):
+        try:
+            df = self.df_manager.get_dataframe()
+            onair_indice = self.global_context.get_value('previous_on_air_primary_index') or -1
+            content_loc = self.global_context.get_value('ContentLoc')
+
+            # Step 1: Get missing primary content after on-air
+            missing_after_onair = df[
+                (df.index > onair_indice) &
+                (df['Type'].str.lower().isin(['pri', 'primary'])) &
+                (~df['Inventory'].str.startswith('LIVE', na=False)) &
+                (df['Status'] == 'N.A')
+            ]
+
+            if missing_after_onair.empty:
+                logger.info("No missing primary content after on-air to verify.")
+                return
+
+            # Step 2: Pick first inventory for processing
+            inventory_id = missing_after_onair['Inventory'].unique()[0]
+            clip_ext = self.get_file_extension(inventory_id)
+            clip_path = os.path.join(content_loc, f"{inventory_id}{clip_ext}")
+
+            # Step 3: Check file stability
+            if self.is_file_stable(clip_path):
+                # Step 4: Get all valid Melted indexes from full DF
+                insertion_indexes = df[
+                    (df['Inventory'] == inventory_id) &
+                    (df['Type'].str.lower().isin(['pri', 'primary']))
+                ].index.tolist()
+
+                logger.info(f"Inserting verified inventory '{inventory_id}' at indexes: {insertion_indexes}")
+
+                self.db_verify.verify_content(inventory_id)
+                
+                # Step 5: Insert into Melted FIRST
+                self.insert_update_missing_into_melted(insertion_indexes, df)
+
+                # Step 6: Update status in DF and verify in DB
+                df.loc[df['Inventory'] == inventory_id, 'Status'] = 'O.K'
+                
+
+                # Finalize
+                self.df_manager.toggle_up_dataframe()
+                self.global_context.set_value("sync", 1)
+                logger.info(f"Successfully marked inventory '{inventory_id}' as O.K and inserted into Melted.")
+
+            else:
+                # Step 7: Handle false O.K (was deleted) or still-missing files
+                previously_ok = df[
+                    (df['Inventory'] == inventory_id) &
+                    (df['Status'] == 'O.K')
+                ]
+                if not previously_ok.empty:
+                    indexes = previously_ok.index.tolist()
+                    self.remove_missing_from_melted(indexes)
+                    df.loc[df['Inventory'] == inventory_id, 'Status'] = 'N.A'
+                    logger.warning(f"Content '{inventory_id}' was marked O.K but now missing. Resetting to N.A.")
+                else:
+                    # Still downloading or never present
+                    still_missing_indexes = df[
+                        (df['Inventory'] == inventory_id) &
+                        (df['Status'] == 'N.A')
+                    ].index.tolist()
+                    for idx in still_missing_indexes:
+                        self.df_manager.update_row(idx, 'Status', 'N.A')
+                    logger.warning(f"Content '{inventory_id}' still missing or unstable. Keeping as N.A.")
+
+        except Exception as ex:
             logger.critical(f"Critical error in update_missing_verify: {ex}")
+    
             
     def get_file_extension(self, filename):
       for root, _, files in os.walk(self.global_context.get_value("ContentLoc")):
