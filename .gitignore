@@ -2,3 +2,4 @@ main
 dist/main
 build/main/main.pkg
 *.pyc
+logs/
