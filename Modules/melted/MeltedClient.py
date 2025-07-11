@@ -1722,13 +1722,13 @@ class MeltedClient:
 
 
         #instead of resetting melted, trying clearing melted unit
-        # self.reset_melted_after_stop()
+        self.reset_melted_after_stop()
         
-        self.stop_update_thread()
-        self.update_thread_stop_event.set()
-        self.append_thread_stop_event.set()
-        self.clean_melted()
-        appended_guids.clear()
+        # self.stop_update_thread()
+        # self.update_thread_stop_event.set()
+        # self.append_thread_stop_event.set()
+        # self.clean_melted()
+        # appended_guids.clear()
 
         #On stop, Panic all graphics
         #self.api.Panic()
