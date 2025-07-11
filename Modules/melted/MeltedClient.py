@@ -332,7 +332,7 @@ class MeltedClient:
                 #config_path = f"{self.melted_executable_path}/udp_hdp.conf" if mode == '0' else f"{self.melted_executable_path}/ndi.conf" if mode == '1' else f"{self.melted_executable_path}/decklink.conf" if mode == '2' else None
                 print(f"mode selected : {mode}")
                 logger.info(f'mode selected : {mode}')
-                config_path = "udp_hdp.conf" if mode == 0 else "ndi.conf" if mode == 1 else "decklink.conf" if mode == 2 else None
+                config_path = f"{self.global_context.get_value('channel_name')}_udp_hdp.conf" if mode == 0 else "ndi.conf" if mode == 1 else "decklink.conf" if mode == 2 else None
                 log_file_path = os.path.join(self.melted_executable_path,"melted_debug.log")
                 # log_file_path="melted_debug.log"
                 
