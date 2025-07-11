@@ -118,9 +118,9 @@ class APIListener:
         
 
 
-            if not start_server : 
-                client=MeltedClient() 
-                client.kill_melted() 
+            # if not start_server : 
+            #     client=MeltedClient() 
+            #     client.kill_melted() 
 
             #self.check_and_set_permissions(self.location)
 

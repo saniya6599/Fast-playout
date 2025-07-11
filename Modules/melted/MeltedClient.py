@@ -1719,7 +1719,16 @@ class MeltedClient:
         # reset_after_stop_thread = threading.Thread(target=self.reset_melted_after_stop)
         # reset_after_stop_thread.start()
 
-        self.reset_melted_after_stop()
+
+
+        #instead of resetting melted, trying clearing melted unit
+        # self.reset_melted_after_stop()
+        
+        self.stop_update_thread()
+        self.update_thread_stop_event.set()
+        self.append_thread_stop_event.set()
+        self.clean_melted()
+        appended_guids.clear()
 
         #On stop, Panic all graphics
         #self.api.Panic()
@@ -1744,6 +1753,7 @@ class MeltedClient:
 
     def clean_melted(self):
             response = self.send_command("CLEAN U0")
+            response = self.send_command("REMOVE U0 0")
             # status="automation_stop"
             # self.global_context.set_value("automsg",status)
             print("Playback server unit cleaned successfully.")

@@ -42,7 +42,7 @@ class CustomDumper(yaml.Dumper):
         yaml_str+='\n  '
 
         mode = self.global_context.get_value("OutMode")
-        yml_path = f"{self.melted_executable_path}/udp_hdp.yml" if mode == 0 else f"{self.melted_executable_path}/ndi.yml" if mode == 1 else f"{self.melted_executable_path}/decklink.yml" if mode == 2 else None
+        yml_path = f"{self.melted_executable_path}/{self.global_context.get_value('channel_name')}_udp_hdp.yml" if mode == 0 else f"{self.melted_executable_path}/ndi.yml" if mode == 1 else f"{self.melted_executable_path}/decklink.yml" if mode == 2 else None
         if self.melted_executable_path == None:
             print("[Error] Playback server executable path can not be none, Ensure consig.json includes valid settings")
             self.logger.error("Playback server executable path can not be none, Ensure consig.json includes valid settings")
@@ -58,7 +58,7 @@ class CustomDumper(yaml.Dumper):
         
         
         # Create udp_hdp.conf
-            conf_path = f"{self.melted_executable_path}/udp_hdp.conf"
+            conf_path = f"{self.melted_executable_path}/{self.global_context.get_value('channel_name')}_udp_hdp.conf"
             conf_content = f"""
 SET root={self.global_context.get_value('ContentLoc')}
 UADD multi:{yml_path}
