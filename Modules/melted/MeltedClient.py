@@ -2277,21 +2277,56 @@ class MeltedClient:
                     self.force_stop_thread(self.append_thread)
 
 
-
-            subprocess.run(['pkill', 'melted'], check=True)
-            print("Successfully killed playback server.")
-
-            # Wait for confirmation that melted has stopped
-            while subprocess.run(['pgrep', 'melted']).returncode == 0:
-                logger.info("Waiting for playback to stop...")
-                time.sleep(1)
+            port = self.server_port
+            is_killed = self.kill_melted_by_port(port)
+            if is_killed:
+                logger.info(f"Successfully killed melted on port {port}.")
+            else:
+                logger.info(f"No melted process found on port {port}.")
 
             logger.info("Playback server fully stopped.")
 
         except subprocess.CalledProcessError as e:
          print(f"Error while terminating playback server: {e}")
 
-    def start_melted_again(self, max_retries=3, wait_time=3):
+
+    def kill_melted_by_port(self, port):
+            try:
+                result = subprocess.run(
+                    ["lsof", "-i", f":{port}"],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                lines = result.stdout.strip().split("\n")
+                if len(lines) > 1:
+                    pid = lines[1].split()[1]
+                    subprocess.run(["kill", "-9", pid], check=True)
+                    logger.info(f"Killed melted process on port {port}, PID: {pid}")
+
+                    time.sleep(1)
+                    confirm_result = subprocess.run(
+                        ["lsof", "-i", f":{port}"],
+                        capture_output=True,
+                        text=True
+                    )
+                    if confirm_result.stdout.strip():
+                        logger.warning(f"Process on port {port} still running after kill attempt.")
+                        return False
+                    else:
+                        logger.info(f"Confirmed melted process on port {port} has been terminated.")
+                        return True
+                else:
+                    logger.info(f"No melted process found on port {port} to kill.")
+                    return False
+
+            except subprocess.CalledProcessError as e:
+                logger.warning(f"Failed to find/kill melted on port {port}: {e}")
+                return False
+
+
+
+    def start_melted_again(self, max_retries=3, wait_time=2):
         try:
 
             mode = self.global_context.get_value("OutMode")
@@ -2304,28 +2339,35 @@ class MeltedClient:
                 print(f"Attempting to start playback server (Attempt {attempt + 1}/{max_retries})...")
 
                 # Start the melted executable with the appropriate config
-                command = ["./melted", "-c", config_path]
+                command = ["./melted", "-c", config_path, "-port", str(self.server_port)]
                 subprocess.run(command, check=True, cwd=self.melted_executable_path)
 
                 # Wait a few seconds to allow melted to initialize
                 time.sleep(wait_time)
 
-                # Check if melted is running
-                if subprocess.run(['pgrep', 'melted']).returncode == 0:
-                    print("Playback server started successfully.")
+                if self.check_melted_running_on_port(self.server_port):
+                    logger.info("Playback server started successfully.")
                     return True
                 else:
-                    logger.warning("Playback server failed to start. Retrying...")
+                    logger.warning(f"Melted not detected on port {self.server_port}. Retrying...")
 
-            # If we reach here, all attempts failed
-            print("Failed to start playback server after multiple attempts.")
             logger.error("Failed to start playback server after multiple attempts.")
             return False
 
         except subprocess.CalledProcessError as ex:
-            print(f"Error starting playback server: {ex}")
             logger.error(f"Error starting playback server: {ex}")
             return False
+
+
+
+    def check_melted_running_on_port(self, port):
+        try:
+            result = subprocess.run(["lsof", "-i", f":{port}"], capture_output=True, text=True)
+            return bool(result.stdout.strip())
+        except Exception as e:
+            logger.error(f"Error checking if melted is running on port {port}: {e}")
+            return False
+
 
     def switch_to_server(self):
 
