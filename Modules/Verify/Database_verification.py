@@ -30,6 +30,11 @@ class Database_verification:
                  # Extract unique 'Inventory' values from the filtered data
                 unique_inventory = filtered_df['Inventory'].dropna().unique().tolist()
                 
+                try:
+                    onair_index = int(self.global_context.get_value('onair_primary_index'))
+                except (TypeError, ValueError):
+                    onair_index = 0
+                
                 self.logger.info(f"Unique inventory :{unique_inventory}")
                 for inventory_id in unique_inventory[:]:
                     clip_ext= self.get_file_extension(inventory_id)
@@ -41,7 +46,11 @@ class Database_verification:
                         unique_inventory.remove(inventory_id)
                         row_indexes = df[df['Inventory'] == inventory_id].index
                         
-                        for row_index in row_indexes:
+                        
+                        # Filter to only those rows after the on-air index
+                        valid_indexes = [i for i in row_indexes if i > onair_index]
+                        
+                        for row_index in valid_indexes:
                          self.df_manager.update_row(row_index, 'Status', "N.A")
                          
                 print(f"Filtered Inventory values: {unique_inventory}")
@@ -184,6 +193,10 @@ class Database_verification:
                 df = self.df_manager.get_dataframe()
 
                 unique_inventory = [content] if isinstance(content, str) else list(content or [])
+                try:
+                    onair_index = int(self.global_context.get_value('onair_primary_index'))
+                except (TypeError, ValueError):
+                    onair_index = 0
                 
                 self.logger.info(f"Unique inventory :{unique_inventory}")
                 for inventory_id in unique_inventory[:]:
@@ -196,7 +209,10 @@ class Database_verification:
                         unique_inventory.remove(inventory_id)
                         row_indexes = df[df['Inventory'] == inventory_id].index
                         
-                        for row_index in row_indexes:
+                        # Filter to only those rows after the on-air index
+                        valid_indexes = [i for i in row_indexes if i > onair_index]
+                        
+                        for row_index in valid_indexes:
                          self.df_manager.update_row(row_index, 'Status', "N.A")
                          
                 print(f"Filtered Inventory values: {unique_inventory}")
@@ -279,7 +295,9 @@ class Database_verification:
 
                 try:
                     df = self.df_manager.get_dataframe()
+
                     matching_rows = df[(df['Inventory'] == tapeid) & (df['Segment'] == segmentno)].index
+                    
                 except Exception as e:
                     self.logger.error(f"Database verification update - Error fetching DataFrame: {str(e)}")
                     continue

@@ -350,6 +350,25 @@ class MeltedClient:
             return False
         
         
+    def start_melted_with_tmux(self):
+        try:
+            if not self.init_connection():
+                mode = self.global_context.get_value("OutMode")
+                config_path = f"{self.global_context.get_value('channel_name')}_udp_hdp.conf" if mode == 0 else "ndi.conf" if mode == 1 else "decklink.conf"
+                session_name = f"melted_{self.server_port}"
+                command = f"./melted -c {config_path} -port {self.server_port}"
+                subprocess.run([
+                    "tmux", "new-session", "-d", "-s", session_name,
+                    "bash", "-c", command
+                ], cwd=self.melted_executable_path, check=True)
+                logger.info(f"Melted started in tmux session: {session_name}")
+                return True
+
+        except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to start melted in tmux: {e}")
+                return False
+
+        
         
 
     def check_executable(self):
@@ -1714,21 +1733,14 @@ class MeltedClient:
 
     def stop_melted(self):
 
-
-
-        # reset_after_stop_thread = threading.Thread(target=self.reset_melted_after_stop)
-        # reset_after_stop_thread.start()
-
-
-
         #instead of resetting melted, trying clearing melted unit
-        self.reset_melted_after_stop()
+        # self.reset_melted_after_stop()
         
-        # self.stop_update_thread()
-        # self.update_thread_stop_event.set()
-        # self.append_thread_stop_event.set()
-        # self.clean_melted()
-        # appended_guids.clear()
+        self.stop_update_thread()
+        self.update_thread_stop_event.set()
+        self.append_thread_stop_event.set()
+        self.clean_melted()
+        appended_guids.clear()
 
         #On stop, Panic all graphics
         #self.api.Panic()
@@ -2288,13 +2300,12 @@ class MeltedClient:
 
 
             port = self.server_port
-            is_killed = self.kill_melted_by_port(port)
+            # is_killed = self.kill_melted_by_port(port)
+            is_killed = self.request_external_melted_kill(port)
             if is_killed:
                 logger.info(f"Successfully killed melted on port {port}.")
             else:
                 logger.info(f"No melted process found on port {port}.")
-
-            logger.info("Playback server fully stopped.")
 
         except subprocess.CalledProcessError as e:
          print(f"Error while terminating playback server: {e}")
@@ -2311,29 +2322,53 @@ class MeltedClient:
                 lines = result.stdout.strip().split("\n")
                 if len(lines) > 1:
                     pid = lines[1].split()[1]
-                    subprocess.run(["kill", "-9", pid], check=True)
-                    logger.info(f"Killed melted process on port {port}, PID: {pid}")
+                    
+                
+                kill_result = subprocess.Popen(["kill", "-9", str(pid)])
 
-                    time.sleep(1)
-                    confirm_result = subprocess.run(
-                        ["lsof", "-i", f":{port}"],
-                        capture_output=True,
-                        text=True
-                    )
-                    if confirm_result.stdout.strip():
-                        logger.warning(f"Process on port {port} still running after kill attempt.")
-                        return False
-                    else:
-                        logger.info(f"Confirmed melted process on port {port} has been terminated.")
-                        return True
+                if kill_result.returncode == 0:
+                    logger.info(f"Successfully killed melted on port {port} (PID {pid})")
                 else:
-                    logger.info(f"No melted process found on port {port} to kill.")
-                    return False
+                    logger.warning(f"kill command returned non-zero exit code: {kill_result.returncode}")
 
+                # Step 3: Confirm it's dead
+                time.sleep(1)
+                confirm = subprocess.run(
+                    ["lsof", "-i", f":{port}"],
+                    capture_output=True,
+                    text=True
+                )
+                if confirm.stdout.strip():
+                    logger.warning(f"Process still using port {port} after kill attempt.")
+                    return False
+                else:
+                    logger.info(f"Confirmed melted process on port {port} has been terminated.")
+                    return True
+                            
             except subprocess.CalledProcessError as e:
                 logger.warning(f"Failed to find/kill melted on port {port}: {e}")
                 return False
 
+    def kill_melted_tmux(self):
+        try:
+            session_name = f"melted_{self.server_port}"
+            subprocess.run(["tmux", "kill-session", "-t", session_name], check=True)
+            logger.info(f"Killed tmux session: {session_name}")
+            return True
+        except subprocess.CalledProcessError:
+            logger.warning(f"No tmux session found: {session_name}")
+            return False
+
+    def request_external_melted_kill(self, port):
+        try:
+            response = requests.post(f"http://localhost:{self.global_context.get_value('listener_port') + 1000}/api/kill_by_port", json={"port": port})
+            logger.info(f"Kill response from APIListener: {response.text}")
+            if response.status_code == 200 :
+                return True
+            
+        except Exception as e:
+            logger.error(f"Failed to call kill_by_port: {e}")
+            return False
 
 
     def start_melted_again(self, max_retries=3, wait_time=2):

@@ -81,6 +81,7 @@ def main():
     logger.info("Recieved configuration successfully. Starting server & TCP connection...")
     client=MeltedClient()
     client.start_melted_server()
+    # client.start_melted_with_tmux()
     
     tcp_connection = TCPConnection(global_context.get_value("host"), global_context.get_value("port"))
     tcp_connection.start_server()
@@ -294,7 +295,7 @@ def main():
         elif "PAUSE" in command:
 
                     result=client.pause()
-                    tcp_connection.send_message(conn, result)
+                    tcp_connection.send_message(conn, result)   
                     
         #Physical verification
         elif "VERIFY-SERVER" in command:
