@@ -190,7 +190,7 @@ class MeltedClient:
                         current_segment = df.loc[df['GUID'] == current_on_air_guid, 'Segment'].values[0]
                         Current_duration =  df.loc[df['GUID'] == current_on_air_guid, 'Duration'].values[0]
                         current_som = df.loc[df['GUID'] == current_on_air_guid, 'SOM'].values[0]
-                        current_reckonkey = df.loc[df['GUID'] == current_on_air_guid, 'Reconcile'].values[0]
+                        current_reckonkey = int(df.loc[df['GUID'] == current_on_air_guid, 'Reconcile'].values[0])
                         playlist = df.loc[df['GUID'] == current_on_air_guid, 'playlist'].values[0]
                     
                         
