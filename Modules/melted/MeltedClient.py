@@ -36,6 +36,7 @@ scte_service=ScteService()
 class MeltedClient:
     def __init__(self):
         self.global_context = GlobalContext()
+        self.melted_process = None
         self.server_ip = self.global_context.get_value("host")
         self.server_port = self.global_context.get_value('melted_port')
         self.melted_executable_path = self.global_context.get_value("melted_executable_path")
@@ -212,14 +213,6 @@ class MeltedClient:
                         self.global_context.set_value('actual_on_air_indice',actual_on_air_indice )       #Auto-recovery
                         
                         logger.info(f"NOW PLAYING : {on_air_id} {current_segment} {current_reckonkey} {current_som} {Current_duration}")
-                        
-                        # logger.info(f"Appended guids : {appended_guids}")
-                        
-                        #change status to DONE
-                        # if previous_on_air_guid is not None : 
-                        #     row_index = df[df['GUID'] == previous_on_air_guid].index[0]
-                        #     self.df_manager.update_row(row_index,"Status", "DONE")
-                        # print(appended_guids)
 
                         filename = os.path.splitext(os.path.basename(filename))[0]
                         if filename != on_air_id:
@@ -258,8 +251,6 @@ class MeltedClient:
                         csv_file_path = f"{self.global_context.get_value('busfile_location')}{self.global_context.get_value('channel_name')}.csv"
                         self.write_next_200_rows_to_csv(self.on_air_guid, csv_file_path)
 
-
-                       
                         sec_guids = self.collect_secondary_guids(df, previous_on_air_guid)
 
                         # Fetch the deatils of the on-air GUID
@@ -340,6 +331,7 @@ class MeltedClient:
                 command = ["./melted", "-c", config_path, "-port", str(self.server_port)]
                 # command = f"./melted -c {config_path} -test > {log_file_path} 2>&1"
                 subprocess.run(command,check=True, cwd=self.melted_executable_path)
+                
                 print("Playback server started.")
                 logger.info(f"Playback server started with configuration : {config_path}")
                 return True
@@ -1734,12 +1726,12 @@ class MeltedClient:
     def stop_melted(self):
 
         #instead of resetting melted, trying clearing melted unit
-        # self.reset_melted_after_stop()
+        self.reset_melted_after_stop()
         
         self.stop_update_thread()
         self.update_thread_stop_event.set()
         self.append_thread_stop_event.set()
-        self.clean_melted()
+        # self.shutdown_melted()
         appended_guids.clear()
 
         #On stop, Panic all graphics
@@ -1769,6 +1761,15 @@ class MeltedClient:
             # status="automation_stop"
             # self.global_context.set_value("automsg",status)
             print("Playback server unit cleaned successfully.")
+            return True
+        #else:
+            print("Failed to stop playback server.")
+            return False
+        
+    def shutdown_melted(self):
+            response = self.send_command("SHUTDOWN")
+            # status="automation_stop"
+            # self.global_context.set_value("automsg",status)
             return True
         #else:
             print("Failed to stop playback server.")
@@ -2301,7 +2302,7 @@ class MeltedClient:
 
             port = self.server_port
             # is_killed = self.kill_melted_by_port(port)
-            is_killed = self.request_external_melted_kill(port)
+            is_killed = self.shutdown_melted()
             if is_killed:
                 logger.info(f"Successfully killed melted on port {port}.")
             else:
@@ -2386,7 +2387,7 @@ class MeltedClient:
                 # Start the melted executable with the appropriate config
                 command = ["./melted", "-c", config_path, "-port", str(self.server_port)]
                 subprocess.run(command, check=True, cwd=self.melted_executable_path)
-
+            
                 # Wait a few seconds to allow melted to initialize
                 time.sleep(wait_time)
 
