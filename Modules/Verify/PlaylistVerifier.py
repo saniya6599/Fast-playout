@@ -39,6 +39,10 @@ class PlaylistVerifier:
             
             # Fetch metadata using ffmpeg
             metadata = self.fetch_metadata(inventory_id)
+            try:
+                onair_index = int(self.global_context.get_value('previous_on_air_primary_index'))
+            except (TypeError, ValueError):
+                onair_index = 0
             
             # Store metadata in a list
             if metadata:
@@ -50,9 +54,15 @@ class PlaylistVerifier:
                     # full_id= f"{inventory_id}{file_extension}"
                     cliplocation= os.path.join(self.global_context.get_value("ContentLoc"), inventory_id)
             
+                    
                     for row_index in rows.index:
-                        if not os.path.exists(cliplocation):
+                        if row_index > onair_index and not os.path.exists(cliplocation):
                             self.df_manager.update_row(row_index, 'Status', "N.A")
+
+                    
+                    # for row_index in rows.index:
+                    #     if not os.path.exists(cliplocation):
+                    #         self.df_manager.update_row(row_index, 'Status', "N.A")
 
             
         if metadata_list :

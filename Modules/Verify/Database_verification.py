@@ -31,7 +31,7 @@ class Database_verification:
                 unique_inventory = filtered_df['Inventory'].dropna().unique().tolist()
                 
                 try:
-                    onair_index = int(self.global_context.get_value('onair_primary_index'))
+                    onair_index = int(self.global_context.get_value('previous_on_air_primary_index'))
                 except (TypeError, ValueError):
                     onair_index = 0
                 

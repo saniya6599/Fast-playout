@@ -65,7 +65,7 @@ def main():
     api_thread = Thread(target=api_listener.start_api_server, daemon=True) 
     api_thread.start()
     print("Server APIs hosted, port : 8080")
-    logger.info("Server APIs hotsed, port : 8080")
+    # logger.info("Server APIs hotsed, port : 8080")
     
      # Initialize and configure AutoRecovery
     # auto_recovery = AutoRecovery(global_context, logger)
@@ -157,7 +157,7 @@ def main():
 
             result = subtitle_state.subtitle_state()
             tcp_connection.send_message(conn, result)
-
+ 
         elif "CHECK-STATUS" in command:
 
                 result = check.status()

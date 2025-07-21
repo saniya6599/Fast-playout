@@ -1092,20 +1092,43 @@ class MeltedClient:
                     break
                              
             else : 
-                #for ids that are present during appending procedure but gets deleted/missing
-                if any(df_primary.loc[df_primary['Inventory'] == inventory_id, 'Status'] == 'O.K'):
-                    logger.warning(f"File : {inventory_id} was marked O.K but is now missing or unstable. Marking as N.A.")
+                    all_indexes = df_primary[df_primary['Inventory'] == inventory_id].index
+                    valid_indexes = [
+                        idx for idx in all_indexes
+                        if idx > onair_indice and df_primary.at[idx, 'Status'] == 'O.K'
+                    ]
+
+                    if valid_indexes:
+                        logger.warning(f"File : {inventory_id} was marked O.K but is now missing. Marking as N.A.")
+                        self.remove_missing_from_melted(valid_indexes)
+                        
+                        df_matches = df[
+                        (df['Inventory'] == inventory_id) &
+                        (df['Status'] == 'O.K') &
+                        (df.index > onair_indice)
+                        ]
+                        
+                        for idx in df_matches.index:
+                            self.df_manager.update_row(idx, 'Status', 'N.A')
+                            
+                # #for ids that are present during appending procedure but gets deleted/missing
+                # if any(df_primary.loc[df_primary['Inventory'] == inventory_id, 'Status'] == 'O.K'):
+                #     logger.warning(f"File : {inventory_id} was marked O.K but is now missing or unstable. Marking as N.A.")
                    
-                    # indexes = df_primary[df_primary['Inventory'] == inventory_id].index  
-                    indexes=filtered_df_ok[(filtered_df_ok['Inventory'] == inventory_id)].index
-                    self.remove_missing_from_melted(indexes)
-                    df.loc[df['Inventory'] == inventory_id, 'Status'] = 'N.A'
+                #    ##Commenting this for correct insert
+                   
+                #     # # indexes = df_primary[df_primary['Inventory'] == inventory_id].index  
+                #     # indexes=filtered_df_ok[(filtered_df_ok['Inventory'] == inventory_id)].index
+                #     # self.remove_missing_from_melted(indexes)
+                #     # df.loc[df['Inventory'] == inventory_id, 'Status'] = 'N.A'
+                    
+                    
                 
-                #for ids which where missing from the start and are still misiing/downloading
-                row_indexes = filtered_df[filtered_df['Inventory'] == inventory_id].index  
-                for row_index in row_indexes:
-                    self.df_manager.update_row(row_index, 'Status', "N.A")
-                logger.warning(f"File not found/still downloading for inventory ID: {inventory_id}, keeping status as N.A")
+                #for ids which where missing from the start and are still misiing/downloading   : not required though
+                    row_indexes = filtered_df[filtered_df['Inventory'] == inventory_id].index  
+                    for row_index in row_indexes:
+                        self.df_manager.update_row(row_index, 'Status', "N.A")
+                    logger.warning(f"File not found/still downloading for inventory ID: {inventory_id}, keeping status as N.A")
           except Exception as file_check_ex:
                logger.error(f"Error checking file existence for inventory ID {inventory_id}: {file_check_ex}")
 
