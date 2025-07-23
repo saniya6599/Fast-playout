@@ -248,6 +248,14 @@ def main():
              start_asrun_thread()
              tcp_connection.send_message(conn, result)  
              
+        # elif "INSTANT-START" in command:
+        #      from CommonServices.instant_restart import instant_restart
+            
+        #      _restart = instant_restart()
+        #      result = _restart.start()
+        #      tcp_connection.send_message(conn, result)  
+          
+        
         elif "CONTENT-INSERT" in command:
 
                 result = client.content_insert_entry(command)
