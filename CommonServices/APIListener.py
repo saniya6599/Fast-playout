@@ -208,7 +208,7 @@ class APIListener:
                     data = request.get_json()
 
                     if not data:
-                        
+
                         return jsonify({"message": "No data provided", "status": "error"}), 400
                         print("message: No data provided,status: error")
                     
@@ -216,13 +216,41 @@ class APIListener:
                     print(f"Received pre-recovery data: {data}")
                     
 
-                    required_keys = ["status", "playlist", "previous_running_id", "previous_running_index", "last_checked"]
-                    missing_keys = [key for key in required_keys if key not in data]
+                    required_keys = ["status", "playlist", "previous_running_id", "current_reckonkey", "last_checked","elapsed_frames", "remaining_time"]
+                    missing_keys = [key for key in required_keys if key not in data.get(key) in [None, ""]]
 
                     if missing_keys:
-                        print(f"message: Missing keys: {missing_keys}, status: error")
-                        return jsonify({"message": f"Missing keys: {missing_keys}", "status": "error"}), 400
-                        
+                        self.logger.info(f"Missing keys: {missing_keys}, trying to resolve from recovery file")
+                        # Load recovery.json
+                        try:
+                            recovery_path=os.path.join(self.global_context.get_value('PlaylistLoc'),"recovery.json")
+                            with open(recovery_path, "r") as f:
+                                recovery_entries = json.load(f)
+
+                            # Ensure recovery_entries is a list
+                            if not isinstance(recovery_entries, list):
+                                recovery_entries = [recovery_entries]
+
+                            matched_entry = next(
+                                (entry for entry in recovery_entries if str(entry.get("last_checked")) == str(data.get("last_checked"))),
+                                None
+                            )
+
+                            if matched_entry:
+                                for key in missing_keys:
+                                    if key in matched_entry:
+                                        data[key] = matched_entry[key]
+
+                                # Re-check if any keys still missing after patch
+                                remaining_missing = [key for key in required_keys if key not in data]
+                                if remaining_missing:
+                                    return jsonify({"message": f"Still missing keys after recovery file patch: {remaining_missing}", "status": "error"}), 400
+                            else:
+                                return jsonify({"message": f"No matching recovery entry found for last_checked = {data.get('last_checked')}", "status": "error"}), 400
+
+                        except Exception as e:
+                            return jsonify({"message": f"Error reading recovery file: {e}", "status": "error"}), 500
+                                        
 
                     self.recovery_data = data  
                     playlist = data.get("playlist")
@@ -412,7 +440,6 @@ class APIListener:
     def settings_provider(self):
         return {
             "status": "running",
-            # "playlist": f"{self.get_current_playlist_by_guid()}",
             "playlist" : f"{self.global_context.get_value('current_recovered_playlist')}",
             "previous_running_id": f"{self.global_context.get_value('running_id')}",
             "previous_running_index": f"{self.global_context.get_value('actual_on_air_indice')}",

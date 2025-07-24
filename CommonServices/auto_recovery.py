@@ -84,13 +84,26 @@ class AutoRecovery:
 
     def save_to_file(self, recovery_data):
 
-        try:
-            file_path = f"{os.path.join(self.global_context.get_value('PlaylistLoc'),'recovery.json')}"
-            with open(file_path, "a") as file:
-                file.write(json.dumps(recovery_data) + "\n")
-            print("Recovery data successfully written to file.")
-        except Exception as e:
-            print(f"Error writing recovery data to file: {e}")
+            try:
+                file_path = os.path.join(self.global_context.get_value('PlaylistLoc'), 'recovery.json')
+                
+                # Read existing data or initialize empty list
+                if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                    with open(file_path, "r") as file:
+                        existing_data = json.load(file)
+                else:
+                    existing_data = []
+
+                # Append new data
+                existing_data.append(recovery_data)
+
+                # Write the updated list back as valid JSON
+                with open(file_path, "w") as file:
+                    json.dump(existing_data, file, indent=2)
+
+                print("Recovery data successfully written to file.")
+            except Exception as e:
+                print(f"Error writing recovery data to file: {e}")
 
     def write_recovery_playlist(self):
   
