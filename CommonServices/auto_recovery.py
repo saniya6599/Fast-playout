@@ -85,7 +85,7 @@ class AutoRecovery:
     def save_to_file(self, recovery_data):
 
             try:
-                file_path = os.path.join(self.global_context.get_value('PlaylistLoc'), 'recovery.json')
+                file_path = os.path.join(self.global_context.get_value('PlaylistLoc'), f'{self.global_context.get_value("channel_name")}_recovery.json')
                 
                 # Read existing data or initialize empty list
                 if os.path.exists(file_path) and os.path.getsize(file_path) > 0:

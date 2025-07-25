@@ -223,7 +223,7 @@ class APIListener:
                         self.logger.info(f"Missing keys: {missing_keys}, trying to resolve from recovery file")
                         # Load recovery.json
                         try:
-                            recovery_path=os.path.join(self.global_context.get_value('PlaylistLoc'),"recovery.json")
+                            recovery_path=os.path.join(self.global_context.get_value('PlaylistLoc'),f'{self.global_context.get_value("channel_name")}_recovery.json')
                             with open(recovery_path, "r") as f:
                                 recovery_entries = json.load(f)
 
