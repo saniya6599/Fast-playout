@@ -217,7 +217,7 @@ class APIListener:
                     
 
                     required_keys = ["status", "playlist", "previous_running_id", "current_reckonkey", "last_checked","elapsed_frames", "remaining_time"]
-                    missing_keys = [key for key in required_keys if key not in data.get(key) in [None, ""]]
+                    missing_keys = [key for key in required_keys if key not in data or data.get(key) in [None, ""]]
 
                     if missing_keys:
                         self.logger.info(f"Missing keys: {missing_keys}, trying to resolve from recovery file")
@@ -230,7 +230,7 @@ class APIListener:
                             # Ensure recovery_entries is a list
                             if not isinstance(recovery_entries, list):
                                 recovery_entries = [recovery_entries]
-
+ 
                             matched_entry = next(
                                 (entry for entry in recovery_entries if str(entry.get("last_checked")) == str(data.get("last_checked"))),
                                 None
