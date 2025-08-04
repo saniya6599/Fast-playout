@@ -443,7 +443,7 @@ class APIListener:
             "playlist" : f"{self.global_context.get_value('current_recovered_playlist')}",
             "previous_running_id": f"{self.global_context.get_value('running_id')}",
             "previous_running_index": f"{self.global_context.get_value('actual_on_air_indice')}",
-            "current_reckonkey": self.global_context.get_value('current_reckonkey'),
+            "current_reckonkey": f"{self.global_context.get_value('current_reckonkey')}",
             "elapsed_frames":f"{self.global_context.get_value('elapsed_frames')}",
             "remaining_time":f"{self.global_context.get_value('remaining_time')}",
             "last_checked": datetime.now().strftime("%Y-%m-%d %H:%M:%S")

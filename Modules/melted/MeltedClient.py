@@ -51,6 +51,7 @@ class MeltedClient:
         self.tn = None   #common terminal
         self.tn2=None    # usta status terminal
         self.tn3=None    # skip terminal
+        self.tn4=None    # wipe terminal
 
         self.db_verify = Database_verification()
 
@@ -71,6 +72,10 @@ class MeltedClient:
         self.is_logo_overlayed = False
         self.is_busfile_triggered = False  # flag to track if the busfile is created
         self.is_break=False
+        
+        
+        #compact playlisr lock:
+        self.compact_lock = threading.RLock()
 
 
 
@@ -85,6 +90,7 @@ class MeltedClient:
             self.tn = telnetlib.Telnet(self.global_context.get_value("host"), self.server_port)
             self.tn2 = telnetlib.Telnet(self.global_context.get_value("host"),self.server_port)
             self.tn3 = telnetlib.Telnet(self.global_context.get_value("host"),self.server_port)
+            self.tn4 = telnetlib.Telnet(self.global_context.get_value("host"),self.server_port)
             self.connected = True
             return True
         except Exception as e:
@@ -101,6 +107,21 @@ class MeltedClient:
 
         self.tn.write(command.encode('ascii') + b"\n")
         response = self.tn.read_until(b"\n").decode('ascii')
+        #print("Response from Melted server:", response)
+        return response
+     except Exception as e:
+        print(f"Failed to send command {command}: {e}")
+        return None
+
+    def send_wipe_command(self, command):
+     try:
+        if not self.connected:
+            print("Not connected to playback server. Trying to connect...")
+            if not self.init_connection():
+                return None
+
+        self.tn4.write(command.encode('ascii') + b"\n")
+        response = self.tn4.read_until(b"\n").decode('ascii')
         #print("Response from Melted server:", response)
         return response
      except Exception as e:
@@ -152,22 +173,28 @@ class MeltedClient:
 
          sec_guids = []
          previous_on_air_guid=None
-         df = self.df_manager.get_dataframe()
-         
          actual_on_air_indice = -1
+        #  df = self.df_manager.get_dataframe()
 
          while not self.update_thread_stop_event.is_set():
-            response =  self.send_usta_command("USTA U0")
-            if response:
-                status, filename, elapsed_frames, total_frames,onair_index = self.parse_usta(response)
-                if status  == "playing":
+             
+                    response =  self.send_usta_command("USTA U0")
+                    if not response:
+                        continue
+                
+                    status, filename, elapsed_frames, total_frames,onair_index = self.parse_usta(response)
+                
+                    if status != "playing":
+                        if status == "paused":
+                            self.stop_melted()
+                        continue
 
                     current_on_air_guid = self.global_context.get_value("onair_guid")
                     df = self.df_manager.get_dataframe()
                     
-
                      # If the on-air GUID has changed
                     if previous_on_air_guid != current_on_air_guid:
+                           
                         #toggle up dataframe on id change
                         self.df_manager.toggle_up_dataframe()
                         self.global_context.set_value('sync',1)
@@ -178,29 +205,18 @@ class MeltedClient:
                          #getting on air guid index for autorecovery
                         if previous_on_air_guid is not None:
                          self.global_context.set_value("onair_indice",df[df['GUID'] == previous_on_air_guid].index[0])
+                         
                         # #  shorten the df, only 10 previously played rows should be visible
                         #  if int(self.global_context.get_value("onair_indice")) > 10:
                         #   self.shortened_df(current_on_air_guid)
-                        
-                        
-                        
-                        # #updating status of previous on-air-guid to DONE
-                        # df.loc[df['GUID'] == previous_on_air_guid, 'Status'] = 'DONE'
+
                        
-                        on_air_id=df.loc[df['GUID'] == current_on_air_guid, 'Inventory'].values[0]
-                        current_segment = df.loc[df['GUID'] == current_on_air_guid, 'Segment'].values[0]
-                        Current_duration =  df.loc[df['GUID'] == current_on_air_guid, 'Duration'].values[0]
-                        current_som = df.loc[df['GUID'] == current_on_air_guid, 'SOM'].values[0]
-                        current_reckonkey = df.loc[df['GUID'] == current_on_air_guid, 'Reconcile'].values[0]
-                        playlist = df.loc[df['GUID'] == current_on_air_guid, 'playlist'].values[0]
-                    
-                        
-                        self.global_context.set_value('current_reckonkey',current_reckonkey)
+                        on_air_id,current_segment,current_duration,current_som,current_reckonkey,playlist= self.extract_metadata_for_guid(current_on_air_guid)
                         
                         #on every id change increment the on air index
-
                         if previous_on_air_guid is not None and current_playlist != playlist :
                             logger.info(f"Now switched to playlist : {playlist}")
+                            # self.compact_after_playlist_switch(current_on_air_guid, current_playlist)
                             actual_on_air_indice =-1
                             
                         actual_on_air_indice = actual_on_air_indice+1
@@ -212,7 +228,7 @@ class MeltedClient:
                             
                         self.global_context.set_value('actual_on_air_indice',actual_on_air_indice )       #Auto-recovery
                         
-                        logger.info(f"NOW PLAYING : {on_air_id} {current_segment} {current_reckonkey} {current_som} {Current_duration}")
+                        logger.info(f"NOW PLAYING : {on_air_id} {current_segment} {current_reckonkey} {current_som} {current_duration}")
 
                         filename = os.path.splitext(os.path.basename(filename))[0]
                         if filename != on_air_id:
@@ -245,11 +261,8 @@ class MeltedClient:
                     
                         #fetching on air primary id index for checking and update missing content (status to be)
                         self.global_context.set_value("previous_on_air_primary_index", appended_guids.index(previous_on_air_guid))
-                        
-                        # self.global_context.set_value('actual_playlist_index', int(df.loc[df['GUID'] == previous_on_air_guid, 'playlist_index'].values[0]))
-                        
-                        csv_file_path = f"{self.global_context.get_value('busfile_location')}{self.global_context.get_value('channel_name')}.csv"
-                        self.write_next_200_rows_to_csv(self.on_air_guid, csv_file_path)
+                    
+                        self.write_next_200_rows_to_csv(self.on_air_guid, f"{self.global_context.get_value('busfile_location')}{self.global_context.get_value('channel_name')}.csv")
 
                         sec_guids = self.collect_secondary_guids(df, previous_on_air_guid)
 
@@ -264,23 +277,17 @@ class MeltedClient:
                          self.handle_logo_on_break()
                         elif not self.is_break and not self.is_logo_overlayed:
                          if self.render_logo.overlay("on"):
-                                    print("started logo rendering, as segment after break detected!")
                                     logger.info("started logo rendering, as segment after break detected!")
                                     self.is_logo_overlayed = True
 
                         #SCTE usage only
-                        # logger.info("Trigger FireTemplate on a separate thread")
                         threading.Thread(target=FireTemplate, args=(df,sec_guids, primary_event_time,primary_duration)).start()
 
                         # Call the new method to send the current running ID over UDP
                         # self.send_current_running_id_over_udp()
 
-                        # csv_file_path = f"{self.global_context.get_value('busfile_location')}{self.global_context.get_value('channel_name')}.csv"
-                        # self.write_next_200_rows_to_csv(self.on_air_guid, csv_file_path)
-
                         #changing event time to current time on Id change only
-                        current_event_time = f"{timemgt.get_system_time_ltc()}"
-                        event_time = current_event_time
+                        event_time = f"{timemgt.get_system_time_ltc()}"
                        
 
                     self.global_context.set_value("onair_index",onair_index)
@@ -310,11 +317,35 @@ class MeltedClient:
                     self.global_context.set_value("onair_guid",self.on_air_guid)
                     self.global_context.set_value("ready_guid", self.next_guid)
                     self.global_context.set_value("event_time",event_time)
+                    
 
-                if status == "paused" :
-                    self.stop_melted()
+                # if status == "paused" :
+                #     self.stop_melted()
 
             #time.sleep(1)
+
+
+    def extract_metadata_for_guid(self, current_on_air_guid):
+
+        try:
+            df = self.df_manager.get_dataframe()
+            on_air_id = df.loc[df['GUID'] == current_on_air_guid, 'Inventory'].values[0]
+            current_segment = df.loc[df['GUID'] == current_on_air_guid, 'Segment'].values[0]
+            current_duration = df.loc[df['GUID'] == current_on_air_guid, 'Duration'].values[0]
+            current_som = df.loc[df['GUID'] == current_on_air_guid, 'SOM'].values[0]
+            current_reckonkey = df.loc[df['GUID'] == current_on_air_guid, 'Reconcile'].values[0]
+            playlist = df.loc[df['GUID'] == current_on_air_guid, 'playlist'].values[0]
+            self.global_context.set_value('current_reckonkey', current_reckonkey)
+
+            return on_air_id, current_segment, current_duration, current_som, current_reckonkey, playlist
+
+        except IndexError:
+            logger.warning(f"No data found for current_on_air_guid: {current_on_air_guid}")
+        except Exception as ex:
+            logger.error(f"Failed to extract metadata for GUID {current_on_air_guid}: {ex}")
+
+        return "", "", "", "", "", ""
+
 
     def start_melted_server(self):
         try:
@@ -2657,6 +2688,74 @@ class MeltedClient:
             #     #     logger.info("Less than or equal to 10 GUIDs have been played. No rows removed from the DataFrame.")
             # else:
             #     logger.warning(f"No row found with GUID: {running_guid}. No changes made to the DataFrame.")
+
+
+
+    def compact_after_playlist_switch(self, running_guid: str, new_playlist: str):
+
+
+        with self.compact_lock:
+            logger.info(f"[Compaction Triggered] Playlist changed → New Playlist: '{new_playlist}' | On-Air GUID: {running_guid}")
+
+            try:
+                df = self.df_manager.get_dataframe()
+                if df is None or df.empty:
+                    logger.warning("[Compaction Aborted] DataFrame is empty or None.")
+                    return
+            except Exception as e:
+                logger.error(f"[Compaction Failed] Error accessing DataFrame: {e}")
+                return
+
+            try:
+                onair_index = df[df['GUID'] == running_guid].index[0]
+            except IndexError:
+                logger.warning(f"[Compaction Aborted] On-air GUID '{running_guid}' not found in DataFrame.")
+                return
+            except Exception as e:
+                logger.error(f"[Compaction Failed] Unexpected error while finding on-air index: {e}")
+                return
+
+            try:
+                # Step 1: Wipe Melted above running ID
+                self.send_wipe_command("WIPE U0")
+                logger.info("[Melted] WIPE U0 command sent successfully.")
+            except Exception as e:
+                logger.error(f"[Melted Command Failed] Failed to send WIPE U0: {e}")
+                return
+
+            try:
+                # Step 2: Keep only on-air and all rows after
+                compacted_df = df.loc[onair_index:].copy().reset_index(drop=True)
+
+                if compacted_df.empty:
+                    logger.warning("[Compaction Warning] Compacted DataFrame is empty after on-air. Possible data issue.")
+                    return
+
+                self.df_manager._df = compacted_df
+                appended_guids = compacted_df['GUID'].tolist()
+                
+
+                rows_count = len(self.df_manager._df)
+                first_row_guid = self.df_manager._df.iloc[0]['GUID'] if rows_count > 0 else ""
+                self.global_context.set_value("rows_count", rows_count)
+                self.global_context.set_value("first_row_guid", first_row_guid)
+                
+                
+                self.df_manager.toggle_up_dataframe()
+                self.global_context.set_value('sync', 1)
+
+                logger.info(f"[DataFrame Updated] Rows before: {len(df)} → After compaction: {len(compacted_df)}")
+            except Exception as e:
+                logger.error(f"[Compaction Failed] Error during DataFrame slicing or update: {e}")
+                return
+
+            try:
+                self.notify_ui_playlist_compacted(new_playlist, len(compacted_df))
+                logger.info(f"[UI Notified] Playlist '{new_playlist}' compacted. New rows: {len(compacted_df)}")
+            except Exception as e:
+                logger.error(f"[UI Notification Failed] Could not notify UI: {e}")
+
+
 
     def handle_logo_on_break(self):
 

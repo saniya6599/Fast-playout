@@ -398,8 +398,8 @@ def main():
                     result = onair_preview_state.get()
                     tcp_connection.send_message(conn, result)
                   
-        else:
-            tcp_connection.send_message(conn, "Invalid command.")
+        # else:
+            # tcp_connection.send_message(conn, "Invalid command.")
 
         tcp_connection.close_connection(conn)
          

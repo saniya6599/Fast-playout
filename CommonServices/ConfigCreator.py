@@ -66,6 +66,7 @@ USET U0 consumer.mlt_profile=atsc_1080p_25
 USET U0 consumer.real_time=1
 USET U0 consumer.channels=2
 USET U0 producer.audio_index=all
+USET U0 producer.timecode=10:00:00:00
 USET U0 producer.timecode_from_metadata=1
 USET U0 filter0.mlt_service=timecode
 USET U0 filter0.show=1
