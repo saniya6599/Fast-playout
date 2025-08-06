@@ -1,4 +1,5 @@
 import datetime
+import inspect
 import json
 import re
 import socket
@@ -72,6 +73,7 @@ class MeltedClient:
         self.is_logo_overlayed = False
         self.is_busfile_triggered = False  # flag to track if the busfile is created
         self.is_break=False
+        self.playlist_switched=False
         
         
         #compact playlisr lock:
@@ -169,12 +171,164 @@ class MeltedClient:
         self.append_thread = threading.Thread(target=self.append_remaining_inventory, args=(df, guids, guid))
         self.append_thread.start()
 
+    # def update_status_periodically(self):
+
+    #      sec_guids = []
+    #      previous_on_air_guid=None
+    #      actual_on_air_indice = -1
+    #     #  df = self.df_manager.get_dataframe()
+
+    #      while not self.update_thread_stop_event.is_set():
+             
+    #                 response =  self.send_usta_command("USTA U0")
+    #                 if not response:
+    #                     continue
+                
+    #                 status, filename, elapsed_frames, total_frames,onair_index = self.parse_usta(response)
+                
+    #                 if status != "playing":
+    #                     if status == "paused":
+    #                         self.stop_melted()
+    #                     continue
+
+    #                 current_on_air_guid = self.global_context.get_value("onair_guid")
+    #                 df = self.df_manager.get_dataframe()
+                    
+
+    #                 if previous_on_air_guid != current_on_air_guid:
+    #                     logger.debug(f"[{__file__}:{inspect.currentframe().f_lineno}] On-air ID changed!")
+                           
+    #                     #toggle up dataframe on id change
+    #                     self.df_manager.toggle_up_dataframe()
+    #                     self.global_context.set_value('sync',1)
+    #                     df = self.df_manager.get_dataframe()
+                        
+    #                     if previous_on_air_guid is not None:
+    #                      self.global_context.set_value("onair_indice",df[df['GUID'] == previous_on_air_guid].index[0])
+                         
+    #                     # #  shorten the df, only 10 previously played rows should be visible
+    #                     #  if int(self.global_context.get_value("onair_indice")) > 10:
+    #                     #   self.shortened_df(current_on_air_guid)
+
+                       
+    #                     on_air_id,current_segment,current_duration,current_som,current_reckonkey,playlist= self.extract_metadata_for_guid(current_on_air_guid)
+                        
+    #                     #on every id change increment the on air index
+    #                     if previous_on_air_guid is not None and current_playlist != playlist :
+    #                         logger.info(f"Now switched to playlist : {playlist}")
+    #                         # self.compact_after_playlist_switch(current_on_air_guid, current_playlist)
+    #                         actual_on_air_indice =-1
+                            
+    #                     actual_on_air_indice = actual_on_air_indice+1
+                        
+                        
+    #                     if(self.global_context.get_value('Is_server_in_recovery')):
+    #                         actual_on_air_indice = self.global_context.get_value('recovery_index')
+    #                         self.global_context.set_value('Is_server_in_recovery',False)
+                            
+    #                     self.global_context.set_value('actual_on_air_indice',actual_on_air_indice )       #Auto-recovery
+                        
+    #                     logger.info(f"NOW PLAYING : {on_air_id} {current_segment} {current_reckonkey} {current_som} {current_duration}")
+
+    #                     filename = os.path.splitext(os.path.basename(filename))[0]
+    #                     if filename != on_air_id:
+    #                         logger.critical("CONTENT MISMATCH!")
+    #                         logger.critical(f"MISMATCH | SERVER : {filename} & PLAYOUT : {on_air_id}")
+                            
+    #                     if previous_on_air_guid is not None :
+    #                         self.add_asrun_list(previous_on_air_guid)
+
+    #                     #verifying full playlist on id change
+    #                     if (self.global_context.get_value('auto_verification')):
+    #                         print('Auto verification set to true, veryfying playlist..')
+    #                         logger.info('Auto verification set to true, veryfying playlist..')
+
+    #                         if not (self.global_context.get_value("verification_mode").startswith('Physical')):
+    #                             self.db_verify.verify()
+    #                         else :
+    #                             verifier = PlaylistVerifier()
+    #                             verifier.full_playlist_verification()
+    #                             self.global_context.set_value('sync',1)
+    #                         print(f'Full Playlist verification : completed on ID changed to {filename}')
+    #                     else:
+    #                         logger.info('Checking & update if new content downloaded..')
+    #                         self.update_missing_verify()
+
+    #                     # Update the previous on-air GUID
+    #                     previous_on_air_guid = current_on_air_guid
+    #                     current_playlist= df.loc[df['GUID'] == previous_on_air_guid, 'playlist'].values[0]
+                        
+                    
+    #                     #fetching on air primary id index for checking and update missing content (status to be)
+    #                     self.global_context.set_value("previous_on_air_primary_index", appended_guids.index(previous_on_air_guid))
+                    
+    #                     self.write_next_200_rows_to_csv(self.on_air_guid, f"{self.global_context.get_value('busfile_location')}{self.global_context.get_value('channel_name')}.csv")
+
+    #                     sec_guids = self.collect_secondary_guids(df, previous_on_air_guid)
+
+    #                     # Fetch the deatils of the on-air GUID
+    #                     primary_event_time = df.loc[df['GUID'] == previous_on_air_guid, 'EventTime'].values[0]
+    #                     primary_duration=df.loc[df['GUID'] == previous_on_air_guid, 'Duration'].values[0]
+    #                     Inventory=df.loc[df['GUID'] == previous_on_air_guid, 'Inventory'].values[0]
+
+    #                     #Logo hide on break
+    #                     self.is_break = df.loc[df['GUID'] == previous_on_air_guid, 'Segment'].apply(lambda x: pd.isna(x) or x == "").values[0]
+    #                     if self.is_break :
+    #                      self.handle_logo_on_break()
+    #                     elif not self.is_break and not self.is_logo_overlayed:
+    #                      if self.render_logo.overlay("on"):
+    #                                 logger.info("started logo rendering, as segment after break detected!")
+    #                                 self.is_logo_overlayed = True
+
+    #                     #SCTE usage only
+    #                     threading.Thread(target=FireTemplate, args=(df,sec_guids, primary_event_time,primary_duration)).start()
+
+    #                     # Call the new method to send the current running ID over UDP
+    #                     # self.send_current_running_id_over_udp()
+
+    #                     #changing event time to current time on Id change only
+    #                     event_time = f"{timemgt.get_system_time_ltc()}"
+                       
+
+    #                 self.global_context.set_value("onair_index",onair_index)
+
+    #                 if appended_guids:
+    #                      self.on_air_guid = appended_guids[onair_index]
+
+
+    #                 # event_row = df.loc[df['GUID'] == self.on_air_guid]
+    #                 # if not event_row.empty:
+    #                 #    event_time = event_row.iloc[0]['EventTime']
+
+    #                 if onair_index == len(appended_guids) - 1:
+    #                     self.next_guid = ""
+    #                 else :
+    #                     if appended_guids:
+    #                      self.next_guid = appended_guids[onair_index+1]
+
+    #                 self.global_context.set_value("automsg",status)
+    #                 self.global_context.set_value("status", status)
+    #                 self.global_context.set_value("running_id", filename)
+    #                 self.global_context.set_value("elapsed_frames", elapsed_frames)
+    #                 self.global_context.set_value("total_frames", total_frames)
+    #                 self.global_context.set_value("elapsed_time", self.calculate_elapsed_time(elapsed_frames))
+    #                 self.global_context.set_value("remaining_time", self.calculate_remaining_time(total_frames, elapsed_frames))
+    #                 # self.global_context.set_value("channel_props", self.global_context.get_value("Playlist_loaded"))
+    #                 self.global_context.set_value("onair_guid",self.on_air_guid)
+    #                 self.global_context.set_value("ready_guid", self.next_guid)
+    #                 self.global_context.set_value("event_time",event_time)
+                    
+
+    #             # if status == "paused" :
+    #             #     self.stop_melted()
+
+    #         #time.sleep(1)
+
     def update_status_periodically(self):
 
          sec_guids = []
          previous_on_air_guid=None
          actual_on_air_indice = -1
-        #  df = self.df_manager.get_dataframe()
 
          while not self.update_thread_stop_event.is_set():
              
@@ -190,141 +344,142 @@ class MeltedClient:
                         continue
 
                     current_on_air_guid = self.global_context.get_value("onair_guid")
-                    df = self.df_manager.get_dataframe()
                     
-                     # If the on-air GUID has changed
+
                     if previous_on_air_guid != current_on_air_guid:
-                           
-                        #toggle up dataframe on id change
-                        self.df_manager.toggle_up_dataframe()
-                        self.global_context.set_value('sync',1)
-                        
-                        df = self.df_manager.get_dataframe()
-                        
-                        
-                         #getting on air guid index for autorecovery
-                        if previous_on_air_guid is not None:
-                         self.global_context.set_value("onair_indice",df[df['GUID'] == previous_on_air_guid].index[0])
-                         
-                        # #  shorten the df, only 10 previously played rows should be visible
-                        #  if int(self.global_context.get_value("onair_indice")) > 10:
-                        #   self.shortened_df(current_on_air_guid)
-
                        
-                        on_air_id,current_segment,current_duration,current_som,current_reckonkey,playlist= self.extract_metadata_for_guid(current_on_air_guid)
-                        
-                        #on every id change increment the on air index
-                        if previous_on_air_guid is not None and current_playlist != playlist :
-                            logger.info(f"Now switched to playlist : {playlist}")
-                            # self.compact_after_playlist_switch(current_on_air_guid, current_playlist)
-                            actual_on_air_indice =-1
-                            
-                        actual_on_air_indice = actual_on_air_indice+1
-                        
-                        
-                        if(self.global_context.get_value('Is_server_in_recovery')):
-                            actual_on_air_indice = self.global_context.get_value('recovery_index')
-                            self.global_context.set_value('Is_server_in_recovery',False)
-                            
-                        self.global_context.set_value('actual_on_air_indice',actual_on_air_indice )       #Auto-recovery
-                        
-                        logger.info(f"NOW PLAYING : {on_air_id} {current_segment} {current_reckonkey} {current_som} {current_duration}")
-
-                        filename = os.path.splitext(os.path.basename(filename))[0]
-                        if filename != on_air_id:
-                            logger.critical("CONTENT MISMATCH!")
-                            logger.critical(f"MISMATCH | SERVER : {filename} & PLAYOUT : {on_air_id}")
-                            
-                        if previous_on_air_guid is not None :
-                            self.add_asrun_list(previous_on_air_guid)
-
-                        #verifying full playlist on id change
-                        if (self.global_context.get_value('auto_verification')):
-                            print('Auto verification set to true, veryfying playlist..')
-                            logger.info('Auto verification set to true, veryfying playlist..')
-
-                            if not (self.global_context.get_value("verification_mode").startswith('Physical')):
-                                self.db_verify.verify()
-                            else :
-                                verifier = PlaylistVerifier()
-                                verifier.full_playlist_verification()
-                                self.global_context.set_value('sync',1)
-                            print(f'Full Playlist verification : completed on ID changed to {filename}')
-                        else:
-                            logger.info('Checking & update if new content downloaded..')
-                            self.update_missing_verify()
-
-                        # Update the previous on-air GUID
+                        segment, duration, som, reckonkey, playlist = self.handle_guid_change(previous_on_air_guid, current_on_air_guid, filename)
                         previous_on_air_guid = current_on_air_guid
-                        current_playlist= df.loc[df['GUID'] == previous_on_air_guid, 'playlist'].values[0]
                         
-                    
-                        #fetching on air primary id index for checking and update missing content (status to be)
-                        self.global_context.set_value("previous_on_air_primary_index", appended_guids.index(previous_on_air_guid))
-                    
-                        self.write_next_200_rows_to_csv(self.on_air_guid, f"{self.global_context.get_value('busfile_location')}{self.global_context.get_value('channel_name')}.csv")
+                        
+                        sec_guids = self.collect_secondary_guids(previous_on_air_guid)
 
-                        sec_guids = self.collect_secondary_guids(df, previous_on_air_guid)
 
-                        # Fetch the deatils of the on-air GUID
-                        primary_event_time = df.loc[df['GUID'] == previous_on_air_guid, 'EventTime'].values[0]
-                        primary_duration=df.loc[df['GUID'] == previous_on_air_guid, 'Duration'].values[0]
-                        Inventory=df.loc[df['GUID'] == previous_on_air_guid, 'Inventory'].values[0]
-
-                        #Logo hide on break
-                        self.is_break = df.loc[df['GUID'] == previous_on_air_guid, 'Segment'].apply(lambda x: pd.isna(x) or x == "").values[0]
-                        if self.is_break :
-                         self.handle_logo_on_break()
-                        elif not self.is_break and not self.is_logo_overlayed:
-                         if self.render_logo.overlay("on"):
-                                    logger.info("started logo rendering, as segment after break detected!")
-                                    self.is_logo_overlayed = True
-
-                        #SCTE usage only
-                        threading.Thread(target=FireTemplate, args=(df,sec_guids, primary_event_time,primary_duration)).start()
-
-                        # Call the new method to send the current running ID over UDP
-                        # self.send_current_running_id_over_udp()
-
-                        #changing event time to current time on Id change only
+                        self.overlay_logo_if_needed(previous_on_air_guid)
                         event_time = f"{timemgt.get_system_time_ltc()}"
-                       
-
-                    self.global_context.set_value("onair_index",onair_index)
-
-                    if appended_guids:
-                         self.on_air_guid = appended_guids[onair_index]
-
-
-                    # event_row = df.loc[df['GUID'] == self.on_air_guid]
-                    # if not event_row.empty:
-                    #    event_time = event_row.iloc[0]['EventTime']
-
-                    if onair_index == len(appended_guids) - 1:
-                        self.next_guid = ""
-                    else :
-                        if appended_guids:
-                         self.next_guid = appended_guids[onair_index+1]
-
-                    self.global_context.set_value("automsg",status)
-                    self.global_context.set_value("status", status)
-                    self.global_context.set_value("running_id", filename)
-                    self.global_context.set_value("elapsed_frames", elapsed_frames)
-                    self.global_context.set_value("total_frames", total_frames)
-                    self.global_context.set_value("elapsed_time", self.calculate_elapsed_time(elapsed_frames))
-                    self.global_context.set_value("remaining_time", self.calculate_remaining_time(total_frames, elapsed_frames))
-                    # self.global_context.set_value("channel_props", self.global_context.get_value("Playlist_loaded"))
-                    self.global_context.set_value("onair_guid",self.on_air_guid)
-                    self.global_context.set_value("ready_guid", self.next_guid)
-                    self.global_context.set_value("event_time",event_time)
+                        self.trigger_secondary_event(sec_guids, event_time, duration)
+                        
+                    self.global_context.set_value("onair_index", onair_index)
+                    self.update_onair_and_ready_guids(onair_index)
+                    self.update_global_context_with_status(status, filename, elapsed_frames, total_frames, event_time)
+                    
+                    # if self.playlist_switched:
+                    #     self.compact_after_playlist_switch(current_on_air_guid,playlist)
+                    #     self.playlist_switched=False
+                                    
                     
 
-                # if status == "paused" :
-                #     self.stop_melted()
+    def handle_guid_change(self, previous_on_air_guid, current_on_air_guid, filename):
+        try:
+            self.df_manager.toggle_up_dataframe()
+            self.global_context.set_value('sync', 1)
+            df = self.df_manager.get_dataframe()
 
-            #time.sleep(1)
+            if previous_on_air_guid is not None:
+                self.global_context.set_value("onair_indice", df[df['GUID'] == previous_on_air_guid].index[0])
+
+            on_air_id, segment, duration, som, reckonkey, playlist = self.extract_metadata_for_guid(current_on_air_guid)
+            logger.debug(f"[{__file__}:{inspect.currentframe().f_lineno}] Metadata extracted: {on_air_id}, {segment}")
+
+            
+            actual_on_air_indice = self.global_context.get_value('actual_on_air_indice') or -1
+            if previous_on_air_guid and self.global_context.get_value('current_playlist') != playlist:
+                logger.info(f"[{__file__}:{inspect.currentframe().f_lineno}] Playlist switched: {playlist}")
+                self.playlist_switched = True
+                actual_on_air_indice = -1
+
+            if self.global_context.get_value('Is_server_in_recovery'):
+                actual_on_air_indice = self.global_context.get_value('recovery_index')
+                self.global_context.set_value('Is_server_in_recovery', False)
+
+            self.global_context.set_value('actual_on_air_indice', actual_on_air_indice + 1)
+
+            logger.info(f"NOW PLAYING : {on_air_id} {segment} {reckonkey} {som} {duration}")
 
 
+            if os.path.splitext(os.path.basename(filename))[0] != on_air_id:
+                logger.critical(f"[{__file__}:{inspect.currentframe().f_lineno}] CONTENT MISMATCH! : {filename} & PLAYOUT : {on_air_id}")
+
+            if previous_on_air_guid:
+                self.add_asrun_list(previous_on_air_guid)
+
+            if self.global_context.get_value('auto_verification'):
+                logger.info('Auto verification set to true, veryfying playlist..')
+                if not self.global_context.get_value("verification_mode").startswith('Physical'):
+                    self.db_verify.verify()
+                else:
+                    PlaylistVerifier().full_playlist_verification()
+                    self.global_context.set_value('sync',1)
+                logger.info(f"[{__file__}:{inspect.currentframe().f_lineno}] Full Playlist Verified")
+            else:
+                logger.info('Checking & update if new content downloaded..')
+                self.update_missing_verify()
+                
+                self.global_context.set_value('current_playlist', df.loc[df['GUID'] == current_on_air_guid, 'playlist'].values[0])
+
+
+            self.write_next_200_rows_to_csv(current_on_air_guid, f"{self.global_context.get_value('busfile_location')}{self.global_context.get_value('channel_name')}.csv")
+
+            self.global_context.set_value("previous_on_air_primary_index", appended_guids.index(current_on_air_guid))
+
+            return segment, duration, som, reckonkey, playlist
+        except Exception as e:
+            logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Error in handle_guid_change: {e}")
+            return None, None, None, None, None
+
+    def overlay_logo_if_needed(self,guid):
+        try:
+            df = self.df_manager.get_dataframe()
+            is_break = df.loc[df['GUID'] == guid, 'Segment'].apply(lambda x: pd.isna(x) or x == "").values[0]
+            self.is_break = is_break
+            if is_break:
+                self.handle_logo_on_break()
+            elif not is_break and not self.is_logo_overlayed:
+                if self.render_logo.overlay("on"):
+                    logger.info(f"[{__file__}:{inspect.currentframe().f_lineno}] Started logo rendering after break")
+                    self.is_logo_overlayed = True
+        except Exception as e:
+            logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Error in overlay_logo_if_needed: {e}")
+
+
+    def trigger_secondary_event(self, sec_guids, event_time, duration):
+        try:
+            df = self.df_manager.get_dataframe()
+            threading.Thread(target=FireTemplate, args=(df, sec_guids, event_time, duration)).start()
+            logger.info(f"[{__file__}:{inspect.currentframe().f_lineno}] FireTemplate triggered")
+
+            # Call the new method to send the current running ID over UDP
+            # self.send_current_running_id_over_udp()
+            
+        except Exception as e:
+            logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Failed to trigger secondary event")
+   
+   
+    def update_onair_and_ready_guids(self, onair_index):
+        try:
+            if appended_guids:
+                self.on_air_guid = appended_guids[onair_index]
+                self.next_guid = appended_guids[onair_index + 1] if onair_index + 1 < len(appended_guids) else ""
+            # logger.info(f"[{__file__}:{inspect.currentframe().f_lineno}] on_air_guid: {self.on_air_guid}, next_guid: {self.next_guid}")
+        except Exception as e:
+            logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Error in update_onair_and_ready_guids: {e}")
+    
+    def update_global_context_with_status(self, status, filename, elapsed_frames, total_frames, event_time):
+        try:
+            self.global_context.set_value("automsg", status)
+            self.global_context.set_value("status", status)
+            self.global_context.set_value("running_id", filename)
+            self.global_context.set_value("elapsed_frames", elapsed_frames)
+            self.global_context.set_value("total_frames", total_frames)
+            self.global_context.set_value("elapsed_time", self.calculate_elapsed_time(elapsed_frames))
+            self.global_context.set_value("remaining_time", self.calculate_remaining_time(total_frames, elapsed_frames))
+            self.global_context.set_value("onair_guid", self.on_air_guid)
+            self.global_context.set_value("ready_guid", self.next_guid)
+            self.global_context.set_value("event_time", event_time)
+        except Exception as e:
+            logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Error in update_global_context_with_status: {e}")
+
+   
     def extract_metadata_for_guid(self, current_on_air_guid):
 
         try:
@@ -2121,7 +2276,8 @@ class MeltedClient:
                     return os.path.splitext(file)[1]
       return None
 
-    def collect_secondary_guids(self, df, previous_on_air_guid):
+    def collect_secondary_guids(self, previous_on_air_guid):
+        df = self.df_manager.get_dataframe()
         all_guids = df["GUID"].tolist()
 
         # Initialize list to hold secondary GUIDs
@@ -2628,7 +2784,7 @@ class MeltedClient:
         # to add sec attached to that primary id that has been played
             if int(self.global_context.get_value("asrun_filter")) in [0,2] :
                 df = self.df_manager.get_dataframe()
-                sec_list=self.collect_secondary_guids(df,played_guid)
+                sec_list=self.collect_secondary_guids(played_guid)
 
                 # Add all secondary GUIDs to the asrun list if not already present
                 new_guids = [guid for guid in sec_list if guid not in asrun_list]

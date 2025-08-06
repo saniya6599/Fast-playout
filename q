@@ -1,0 +1,125 @@
+[33mcommit 9a6141202da61d0aa8d20ca138c4248ca8de1493[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Mon Aug 4 15:15:45 2025 +0530
+
+    pulled back 10 SOM & Invalid command action handled
+
+[33mcommit 216f015122bdf5008bf3914e9c20ab34a78a5ea9[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Mon Jul 28 11:23:44 2025 +0530
+
+    final
+
+[33mcommit b563e6977439765189ad0bf81f81de6fe579af8b[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Fri Jul 25 16:14:39 2025 +0530
+
+    Added for 10:00:00:00 SOM in conf
+
+[33mcommit 2b136edffae5d4016d3d240f98acf61423dcc82a[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Fri Jul 25 14:58:44 2025 +0530
+
+    Added safe recovery from json
+
+[33mcommit 33b14fe68c4a3573bc60af914e70e928f6a06aff[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Fri Jul 25 12:01:10 2025 +0530
+
+    Added safe recovery from json
+
+[33mcommit f729619d8b82a665d48e483ac7d3967bc99e8096[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Thu Jul 24 16:36:30 2025 +0530
+
+    Added safe recovery from json
+
+[33mcommit 33af698392246cfbd01dd5b42b2d415aeb2d85a4[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Wed Jul 23 15:28:21 2025 +0530
+
+    added instant start - failed
+
+[33mcommit 1f34eb8f109c0f7fde2ee8317a352dfc9b3403d6[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Mon Jul 21 16:08:03 2025 +0530
+
+     latest insert issue modificationa
+
+[33mcommit 3f9a1c06cc62877bbdcf15db8cfbe6c3dd4cc84f[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Tue Jul 15 14:10:48 2025 +0530
+
+    handled stop module
+
+[33mcommit c07de3d5f4637b283f21e969098e630a6f61e79b[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Tue Jul 15 10:25:48 2025 +0530
+
+    Changes reckonkey type from int64 to int
+
+[33mcommit 1f9e8add9e176e01a0749d262156be918017730d[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Mon Jul 14 16:36:44 2025 +0530
+
+    Done rows no updates & STop module
+
+[33mcommit c3350cbf2e0935887962d85504205269efc71c14[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Fri Jul 11 17:35:24 2025 +0530
+
+    global changes for config file create & stop meltd button
+
+[33mcommit 5e85a1ae0abd5fa6bf62636ce726c05ebfd1f01a[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Fri Jul 11 15:32:57 2025 +0530
+
+    global changes for config file create & stop meltd button
+
+[33mcommit f6aaa6bf6e38ba3f1a8d3d7600192d86a65ad483[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Fri Jul 11 14:52:58 2025 +0530
+
+    global changes for config file create & stop meltd button
+
+[33mcommit 4d2c30d604c0065d28a020fe90dc1a05b80054cb[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Fri Jul 11 13:33:59 2025 +0530
+
+    kill melted by port on stop button
+
+[33mcommit 1da3cf9463c6fdd738f6fa85ec220d5af90bd4cb[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Tue Jul 8 11:29:19 2025 +0530
+
+    adding git ignore
+
+[33mcommit 7a7f59af7e03718b99e1a8bafa14a53325657213[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Tue Jul 8 11:21:50 2025 +0530
+
+    adding git ignore
+
+[33mcommit 1fbade0b187792254cb5b8cc1525f98db4340d04[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Thu Jul 3 17:42:55 2025 +0530
+
+    final changes for recovery folder to be playlist folder
+
+[33mcommit 7b553cfa2fe9a82ace629d06768f342a1beda454[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Thu Jul 3 16:47:08 2025 +0530
+
+    final changes for recovery folder to be playlist folder
+
+[33mcommit 01153f87d1477f671b4a3ac153cc7c3f8c065485[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Thu Jul 3 15:45:08 2025 +0530
+
+    changed in autorecovery for recovery playlist in playlist folder only
+
+[33mcommit 4dc8411afa89834af7dada674784af4e6d4fff50[m
+Author: saniya6599 <saniyatyagi6599@gmail.com>
+Date:   Wed Jul 2 11:55:05 2025 +0530
+
+    Initial clean commit without large files
