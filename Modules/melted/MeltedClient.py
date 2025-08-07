@@ -1010,7 +1010,8 @@ class MeltedClient:
                 else :
                     print(f"Performing Database verification on inserted ID : {new_row['Inventory'][0]}")
                     self.db_verify.verify_content(new_row['Inventory'][0])
-                    som = self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0],)
+                    # som = self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0],)
+                    som = self.normalize_som_by_10_hours(str(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0]))
                     eof = som + self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["Duration"].iloc[0],)
 
                 logger.info(f"Entry inserted at position {position} with GUID {new_guid}.")
@@ -1747,7 +1748,8 @@ class MeltedClient:
                 filename=source_row_data[2]
                 file_extension=source_row_data[13]
                 
-                som= self.parse_time_to_frames(source_row_data[7])
+                # som= self.parse_time_to_frames(source_row_data[7])
+                som= self.normalize_som_by_10_hours(str(source_row_data[7]))
                 eof= som + self.parse_time_to_frames(source_row_data[8])
 
                 # Create the new row DataFrame
@@ -2119,7 +2121,8 @@ class MeltedClient:
                 path= os.path.join(self.global_context.get_value('ContentLoc'),f"{values[2]}{clip_ext}")
                 
                 df=self.df_manager.get_dataframe()
-                som = self.parse_time_to_frames(df[df["GUID"] == guid]["SOM"].iloc[0],)
+                # som = self.parse_time_to_frames(df[df["GUID"] == guid]["SOM"].iloc[0],)
+                som = self.normalize_som_by_10_hours(str(df[df["GUID"] == guid]["SOM"].iloc[0]))
                 eof = som + self.parse_time_to_frames(df[df["GUID"] == guid]["Duration"].iloc[0],)
                 position = df_primary[df_primary["GUID"]==values[17]].index[0]
                 
