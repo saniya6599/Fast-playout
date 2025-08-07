@@ -351,6 +351,10 @@ class MeltedClient:
                         segment, duration, som, reckonkey, playlist = self.handle_guid_change(previous_on_air_guid, current_on_air_guid, filename)
                         previous_on_air_guid = current_on_air_guid
                         
+                        if self.playlist_switched:
+                            # self.compact_after_playlist_switch(current_on_air_guid,playlist)
+                            self.playlist_switched=False
+                        
                         
                         sec_guids = self.collect_secondary_guids(previous_on_air_guid)
 
@@ -363,9 +367,7 @@ class MeltedClient:
                     self.update_onair_and_ready_guids(onair_index)
                     self.update_global_context_with_status(status, filename, elapsed_frames, total_frames, event_time)
                     
-                    # if self.playlist_switched:
-                    #     self.compact_after_playlist_switch(current_on_air_guid,playlist)
-                    #     self.playlist_switched=False
+                   
                                     
                     
 
@@ -606,7 +608,7 @@ class MeltedClient:
                 if start_appending:
                     appended_guids.append(guid)
                     inventory_item = df[df["GUID"] == guid]["Inventory"].iloc[0]
-                    som = self.parse_time_to_frames(df[df["GUID"] == guid]["SOM"].iloc[0],)
+                    som = self.normalize_som_by_10_hours(str(df[df["GUID"] == guid]["SOM"].iloc[0]))
                     eof = som + self.parse_time_to_frames(df[df["GUID"] == guid]["Duration"].iloc[0],)
                     # logger.info(f"Direct playing from ID : {inventory_item} som: {som}  and  eof {eof}")
                     file_extension = self.get_file_extension(inventory_item)
@@ -742,7 +744,7 @@ class MeltedClient:
                     event_type = df[df["GUID"] == guid]["Type"].iloc[0]
                     if event_type.lower() in ["pri", "primary"]:
                         inventory_item = df[df["GUID"] == guid]["Inventory"].iloc[0]
-                        som = self.parse_time_to_frames(df[df["GUID"] == guid]["SOM"].iloc[0],)
+                        som = self.normalize_som_by_10_hours(str(df[df["GUID"] == guid]["SOM"].iloc[0]))
                         eof = som + self.parse_time_to_frames(df[df["GUID"] == guid]["Duration"].iloc[0],)
                         # logger.info(f"Appending {inventory_item} som: {som}  and  eof {eof}")
 
@@ -1002,7 +1004,8 @@ class MeltedClient:
                     print(f"Performing physical verification on inserted ID : {new_row['Inventory'][0]}")
                     verifier = PlaylistVerifier()
                     verifier.full_playlist_verification()
-                    som = self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0],)
+                    # som = self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0],)
+                    som = self.normalize_som_by_10_hours(str(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0]))
                     eof = som + self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["Duration"].iloc[0],)
                 else :
                     print(f"Performing Database verification on inserted ID : {new_row['Inventory'][0]}")
@@ -1115,12 +1118,14 @@ class MeltedClient:
                 print(f"Performing physical verification on inserted ID : {new_row['Inventory'][0]}")
                 verifier = PlaylistVerifier()
                 verifier.full_playlist_verification()
-                som = self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0],)
+                # som = self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0],)
+                som = self.normalize_som_by_10_hours(str(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0]))
                 eof = som + self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["Duration"].iloc[0],)
             else :
                 print(f"Performing Database verification on inserted ID : {new_row['Inventory'][0]}")
                 self.db_verify.verify_content(new_row['Inventory'][0])
-                som = self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0],)
+                # som = self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0],)
+                som = self.normalize_som_by_10_hours(str(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["SOM"].iloc[0]))
                 eof = som + self.parse_time_to_frames(self.df_manager._df[self.df_manager._df["GUID"] == new_guid]["Duration"].iloc[0],)
 
             logger.info(f"Entry inserted at position {position} with GUID {new_guid}.")
@@ -1370,7 +1375,7 @@ class MeltedClient:
                 Inventory= row['Inventory']
                 position = idx
                 file_extension = self.get_file_extension(Inventory)
-                som = self.parse_time_to_frames(df[df["GUID"] == guid]["SOM"].iloc[0],)
+                som= self.normalize_som_by_10_hours(str(df[df["GUID"] == guid]["SOM"].iloc[0]))
                 eof = som + self.parse_time_to_frames(df[df["GUID"] == guid]["Duration"].iloc[0],)
                 
                 # logger.info(f"Inserting into server : {Inventory}") 
@@ -2765,6 +2770,21 @@ class MeltedClient:
         seconds = (total_frames % (60 * 25)) // 25
         frames = total_frames % 25
         return f"{hours:02}:{minutes:02}:{seconds:02}:{frames:02}"
+
+    def normalize_som_by_10_hours(self,som_str: str, fps: int = 25) -> int:
+        try:
+            h, m, s, f = map(int, som_str.split(":"))
+            total_frames = (h * 3600 + m * 60 + s) * fps + f
+            normalized_frames = total_frames - (10 * 3600 * fps)
+
+            return max(normalized_frames, 0)
+
+        except Exception as e:
+            logger.error(f"Invalid SOM format or value: '{som_str}', error: {e}")
+
+
+
+
 
     def force_stop_thread(self, thread):
      if thread.is_alive():
