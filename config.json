@@ -1,5 +1,6 @@
 {
     "melted_executable_path":"/home/saniya/melted/src/melted/src/melted",
     "melted_port": 5250,
-    "listener_port": 8080
+    "listener_port": 8080,
+    "normalise_som" : false
 }

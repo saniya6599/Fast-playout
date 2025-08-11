@@ -36,11 +36,10 @@ def main():
     config = Config()
     config.load_config("config.json")     
 
-    # global_context.set_value('ffmpeg',config.get("ffmpeg"))
     global_context.set_value('melted_executable_path',config.get('melted_executable_path'))
     global_context.set_value('melted_port', config.get('melted_port'))
     global_context.set_value('listener_port', config.get('listener_port'))
-    # global_context.set_value('current_playlists',[])
+    global_context.set_value('normalise_som', config.get('normalise_som'))
     
     # global_context.set_value('udp_packet_ip',config.get('Udp_packet').split(':')[0])    #now need to take it from external command (config manager)
     # global_context.set_value('udp_packet_port',config.get('Udp_packet').split(':')[1])
