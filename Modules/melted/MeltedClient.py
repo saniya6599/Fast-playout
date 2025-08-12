@@ -398,7 +398,8 @@ class MeltedClient:
 
             logger.info(f"NOW PLAYING : {on_air_id} {segment} {reckonkey} {som} {duration}")
 
-
+            self.global_context.set_value("previous_on_air_primary_index", appended_guids.index(current_on_air_guid))
+            
             if os.path.splitext(os.path.basename(filename))[0] != on_air_id:
                 logger.critical(f"[{__file__}:{inspect.currentframe().f_lineno}] CONTENT MISMATCH! : {filename} & PLAYOUT : {on_air_id}")
 
@@ -422,7 +423,7 @@ class MeltedClient:
 
             self.write_next_200_rows_to_csv(current_on_air_guid, f"{self.global_context.get_value('busfile_location')}{self.global_context.get_value('channel_name')}.csv")
 
-            self.global_context.set_value("previous_on_air_primary_index", appended_guids.index(current_on_air_guid))
+            
 
             return segment, duration, som, reckonkey, playlist
         except Exception as e:
@@ -1353,7 +1354,7 @@ class MeltedClient:
            
            #onair_indice = self.global_context.get_value("onair_indice")
            #get primary on air indice
-           onair_indice = self.global_context.get_value("previous_on_air_primary_index")
+           onair_indice = int(self.global_context.get_value('previous_on_air_primary_index') or -1)
            
            
         #    filtered_df = df[
