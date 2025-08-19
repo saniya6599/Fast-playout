@@ -1397,7 +1397,7 @@ class MeltedClient:
                 print("Error inserting entry:", ex)
                 return f"{self.global_context.get_value('channel_name')}^_^INSERT^_^NACK^_^ERROR"
 
-    def is_file_stable(self,path, wait_time=0.5):
+    def is_file_stable(self,path, wait_time=0.5,min_valid_size= 10*1024):
 
         try:
             # logger.info(f"Clip path : {path}")
@@ -1413,9 +1413,12 @@ class MeltedClient:
             print(f"Size after {wait_time} seconds: {size_after} bytes")
 
             if size_before == size_after:
-                # logger.info(f"{os.path.basename(clip_path)} size is stable. File is likely fully downloaded.")
-                print(f"{os.path.basename(path)} size is stable. File is likely fully downloaded.")
-                return True
+                if size_after < min_valid_size:
+                    logger.warning(f"{os.path.basename(path)} is stable but too small ({size_after} bytes). Still missing.")
+                    return False
+                else:
+                    print(f"{os.path.basename(path)} size is stable. File is likely fully downloaded.")
+                    return True
             else:
                 logger.info(f"{os.path.basename(path)} may still be downloading")
                 return False
