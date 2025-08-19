@@ -279,7 +279,7 @@ def main():
 
         elif "UPDATE" in command:
             
-                    result = client.update(command)
+                    result = client.update(command)     
                     tcp_connection.send_message(conn, result)
 
         elif "PASTE" in command:
@@ -320,8 +320,7 @@ def main():
                         tcp_connection.send_message(conn, f"{global_context.get_value('channel_name')}^_^VERIFY-SERVER^_^NACK")
                    
         #Database verification            
-        elif "VERIFY-ALL" in command:
-            
+        elif "VERIFY-ALL" in command:            
                     if not (global_context.get_value("verification_mode").startswith('Physical')):
                         from Modules.Verify.Database_verification import Database_verification
 

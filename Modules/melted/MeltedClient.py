@@ -351,9 +351,11 @@ class MeltedClient:
                         segment, duration, som, reckonkey, playlist = self.handle_guid_change(previous_on_air_guid, current_on_air_guid, filename)
                         previous_on_air_guid = current_on_air_guid
                         
-                        if self.playlist_switched:
+                        # if self.playlist_switched:
                             # self.compact_after_playlist_switch(current_on_air_guid,playlist)
-                            self.playlist_switched=False
+                            # self.wait_for_melted_stabilization() 
+                            # status, filename, elapsed_frames, total_frames,onair_index = self.parse_usta(response)
+                            # self.playlist_switched=False
                         
                         
                         sec_guids = self.collect_secondary_guids(previous_on_air_guid)
@@ -367,10 +369,6 @@ class MeltedClient:
                     self.update_onair_and_ready_guids(onair_index)
                     self.update_global_context_with_status(status, filename, elapsed_frames, total_frames, event_time)
                     
-                   
-                                    
-                    
-
     def handle_guid_change(self, previous_on_air_guid, current_on_air_guid, filename):
         try:
             self.df_manager.toggle_up_dataframe()
@@ -444,7 +442,6 @@ class MeltedClient:
         except Exception as e:
             logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Error in overlay_logo_if_needed: {e}")
 
-
     def trigger_secondary_event(self, sec_guids, event_time, duration):
         try:
             df = self.df_manager.get_dataframe()
@@ -456,7 +453,6 @@ class MeltedClient:
             
         except Exception as e:
             logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Failed to trigger secondary event")
-   
    
     def update_onair_and_ready_guids(self, onair_index):
         try:
@@ -482,7 +478,6 @@ class MeltedClient:
         except Exception as e:
             logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Error in update_global_context_with_status: {e}")
 
-   
     def extract_metadata_for_guid(self, current_on_air_guid):
 
         try:
@@ -503,7 +498,6 @@ class MeltedClient:
             logger.error(f"Failed to extract metadata for GUID {current_on_air_guid}: {ex}")
 
         return "", "", "", "", "", ""
-
 
     def start_melted_server(self):
         try:
@@ -530,7 +524,6 @@ class MeltedClient:
             logger.error("Error starting playback server:", ex)
             return False
         
-        
     def start_melted_with_tmux(self):
         try:
             if not self.init_connection():
@@ -548,9 +541,6 @@ class MeltedClient:
         except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to start melted in tmux: {e}")
                 return False
-
-        
-        
 
     def check_executable(self):
         # Check if the directory exists
@@ -1919,26 +1909,6 @@ class MeltedClient:
          if(self.render_logo.overlay("off")) :  #through moksha
           return f"{self.global_context.get_value('channel_name')}^_^LOAD-UNLOAD-LOGO^_^ACK "
 
-    # #works ok
-    # def _read_response(self):
-    #     response = ""
-    #     while True:
-    #             line = self.tn.read_until(b"202 OK", timeout=5).decode('ascii').strip()
-    #             # if line.strip() == "200 OK":
-    #             #  continue
-    #             # # if line.strip().startswith("\n"):
-    #             # #  continue
-
-    #             # if not line:
-    #             #     continue
-    #             # response += line
-    #             # Check for the '202 OK' line
-    #             if "202 OK" in line:
-    #                 break
-    #         # Read the next line which contains the main data
-    #     data_line = self.tn.read_until(b"\n", timeout=2).decode('ascii').strip()
-    #     response += data_line.replace('\n','')
-    #     return response
 
     def stop_melted(self):
 
@@ -2529,7 +2499,6 @@ class MeltedClient:
         except subprocess.CalledProcessError as e:
          print(f"Error while terminating playback server: {e}")
 
-
     def kill_melted_by_port(self, port):
             try:
                 result = subprocess.run(
@@ -2589,7 +2558,6 @@ class MeltedClient:
             logger.error(f"Failed to call kill_by_port: {e}")
             return False
 
-
     def start_melted_again(self, max_retries=3, wait_time=2):
         try:
 
@@ -2622,8 +2590,6 @@ class MeltedClient:
             logger.error(f"Error starting playback server: {ex}")
             return False
 
-
-
     def check_melted_running_on_port(self, port):
         try:
             result = subprocess.run(["lsof", "-i", f":{port}"], capture_output=True, text=True)
@@ -2631,7 +2597,6 @@ class MeltedClient:
         except Exception as e:
             logger.error(f"Error checking if melted is running on port {port}: {e}")
             return False
-
 
     def switch_to_server(self):
 
@@ -2785,10 +2750,6 @@ class MeltedClient:
         except Exception as e:
             logger.error(f"Invalid SOM format or value: '{som_str}', error: {e}")
 
-
-
-
-
     def force_stop_thread(self, thread):
      if thread.is_alive():
         # Warning: This method assumes the thread checks `self.<event>.is_set()` regularly.
@@ -2868,8 +2829,6 @@ class MeltedClient:
             # else:
             #     logger.warning(f"No row found with GUID: {running_guid}. No changes made to the DataFrame.")
 
-
-
     def compact_after_playlist_switch(self, running_guid: str, new_playlist: str):
 
 
@@ -2897,6 +2856,7 @@ class MeltedClient:
             try:
                 # Step 1: Wipe Melted above running ID
                 self.send_wipe_command("WIPE U0")
+                # time.sleep(2)
                 logger.info("[Melted] WIPE U0 command sent successfully.")
             except Exception as e:
                 logger.error(f"[Melted Command Failed] Failed to send WIPE U0: {e}")
@@ -2911,6 +2871,7 @@ class MeltedClient:
                     return
 
                 self.df_manager._df = compacted_df
+                global appended_guids
                 appended_guids = compacted_df['GUID'].tolist()
                 
 
@@ -2935,6 +2896,31 @@ class MeltedClient:
                 logger.error(f"[UI Notification Failed] Could not notify UI: {e}")
 
 
+    def wait_for_melted_stabilization(self, max_wait=10):
+        """
+        Wait until Melted playback stabilizes after a WIPE U0 command.
+        Prevents 'fast playback' effect by skipping unstable USTA responses.
+        """
+        # logger.debug(f"[{__file__}:{inspect.currentframe().f_lineno}] Waiting for Melted to stabilize after WIPE U0...")
+        start_wait = time.time()
+        
+        while time.time() - start_wait < max_wait:
+            time.sleep(0.5)
+            try:
+                response =  self.send_usta_command("USTA U0")
+                if not response:
+                    continue
+                
+                status, filename, elapsed_frames, total_frames,onair_index = self.parse_usta(response)
+                if onair_index == 0 and elapsed_frames < 50:
+                    print(f"[{__file__}:{inspect.currentframe().f_lineno}] Melted stabilized: index={onair_index}, frames={elapsed_frames}")
+                    return
+            except Exception as e:
+                logger.error(f"[{__file__}:{inspect.currentframe().f_lineno}] Error while checking stabilization: {e}")
+        
+        logger.warning(f"[{__file__}:{inspect.currentframe().f_lineno}] Melted did not stabilize within {max_wait} seconds.")
+
+
 
     def handle_logo_on_break(self):
 
@@ -2948,5 +2934,3 @@ class MeltedClient:
 
 
             return self.is_break
-
-   
