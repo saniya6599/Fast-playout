@@ -56,7 +56,7 @@ class PlaylistVerifier:
             
                     
                     for row_index in rows.index:
-                        if row_index > onair_index and not os.path.exists(cliplocation):
+                        if row_index >= onair_index and not os.path.exists(cliplocation):
                             self.df_manager.update_row(row_index, 'Status', "N.A")
 
                     

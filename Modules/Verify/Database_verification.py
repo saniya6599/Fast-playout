@@ -48,7 +48,7 @@ class Database_verification:
                         
                         
                         # Filter to only those rows after the on-air index
-                        valid_indexes = [i for i in row_indexes if i > onair_index]
+                        valid_indexes = [i for i in row_indexes if i >= onair_index]
                         
                         for row_index in valid_indexes:
                          self.df_manager.update_row(row_index, 'Status', "N.A")
@@ -210,7 +210,7 @@ class Database_verification:
                         row_indexes = df[df['Inventory'] == inventory_id].index
                         
                         # Filter to only those rows after the on-air index
-                        valid_indexes = [i for i in row_indexes if i > onair_index]
+                        valid_indexes = [i for i in row_indexes if i >= onair_index]
                         
                         for row_index in valid_indexes:
                          self.df_manager.update_row(row_index, 'Status', "N.A")
