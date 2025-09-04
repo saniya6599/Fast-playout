@@ -61,24 +61,31 @@ class Logger:
             self._configure_logger()
 
     def log(self, level, message, **kwargs):
-        """Enhanced logging with context and performance tracking."""
+        """Enhanced logging with context and accurate caller location."""
         self._check_log_file()
-        
+
         # Add context information
         channel_name = self.global_context.get_value('channel_name')
         if not channel_name:
             channel_name = 'unknown'
-            
+
         context = {
             'channel': channel_name,
             'timestamp': datetime.datetime.now().isoformat(),
             **kwargs
         }
-        
+
         # Format message with context
         formatted_message = f"{message} | Context: {json.dumps(context, default=str)}"
-        getattr(self.logger, level.lower())(formatted_message)
-        
+
+        # Use stacklevel to point to the original caller (skip: info/debug -> log)
+        level_no = getattr(logging, level.upper(), logging.INFO)
+        try:
+            self.logger.log(level_no, formatted_message, stacklevel=3)
+        except TypeError:
+            # Fallback for environments without stacklevel support
+            self.logger.log(level_no, formatted_message)
+
         # Track performance for critical operations
         if level.upper() in ['ERROR', 'CRITICAL']:
             self._track_performance(level, message, context)
@@ -162,15 +169,18 @@ class Logger:
             **kwargs
         )
         
-    def log_connection_event(self, event_type, host, port, success=True, error=None):
+    def log_connection_event(self, event_type, host, port, success=True, error=None, connection_id=None):
         """Log connection-related events."""
-        self.info(
+        # Use DEBUG for frequent events to reduce noise
+        log_fn = self.debug if event_type in ["accepted", "received", "sent"] else self.info
+        log_fn(
             f"Connection {event_type}: {host}:{port}",
             connection_event=event_type,
             host=host,
             port=port,
             success=success,
-            error=str(error) if error else None
+            error=str(error) if error else None,
+            connection_id=connection_id
         )
         
     def log_command_received(self, command, source=None):
@@ -223,8 +233,7 @@ class Logger:
 
         def scheduled_cleanup():
             try:
-                retention_days_str = self.global_context.get_value("retention days")
-                retention_days = int(retention_days_str) if retention_days_str else 3
+                retention_days = int(self.global_context.get_value("retention days") or 3)
                 self.logger.info(f"Logs retention days configured : {retention_days}")
                 self.cleanup_old_logs(log_retention_days=retention_days)
             except Exception as e:
