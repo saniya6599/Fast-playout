@@ -85,7 +85,6 @@ class TCPConnection:
         except Exception as e:
             self.logger.log_exception(e, context={'operation': 'send_message'})
 
-    @log_function_call
     def close_connection(self, conn):
         try:
             conn.close()
