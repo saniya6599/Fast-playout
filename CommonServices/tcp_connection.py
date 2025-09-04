@@ -37,41 +37,37 @@ class TCPConnection:
             if hasattr(self, 'server_socket') and self.server_socket:
                 self.server_socket.close()
 
-    @log_function_call
     def accept_connection(self):
         try:
             conn, addr = self.server_socket.accept()
             self.connection_count += 1
-            
+            # Log at DEBUG only, minimal payload
             self.logger.log_connection_event(
-                "accepted", 
-                addr[0], 
-                addr[1], 
+                "accepted",
+                addr[0],
+                addr[1],
                 success=True,
                 connection_id=self.connection_count
             )
             return conn
         except Exception as e:
+            # Log failures at INFO with error context
             self.logger.log_connection_event(
-                "accepted", 
-                self.host, 
-                self.port, 
-                success=False, 
+                "accept_failed",
+                self.host,
+                self.port,
+                success=False,
                 error=e
             )
             return None
 
-    @log_function_call
     def receive_message(self, conn):
         try:
             data = conn.recv(2048 * 10)
             if data:
                 message = data.decode()
-                self.logger.debug(
-                    "Message received",
-                    message_length=len(message),
-                    message_preview=message[:100] + "..." if len(message) > 100 else message
-                )
+                # Reduce noise: don't log full payloads by default
+                self.logger.debug("Message received", message_length=len(message))
                 return message
             else:
                 self.logger.warning("Connection closed by the client")
@@ -80,15 +76,10 @@ class TCPConnection:
             self.logger.log_exception(e, context={'operation': 'receive_message'})
             return None
 
-    @log_function_call
     def send_message(self, conn, message):
         try:
             conn.sendall(message.encode())
-            self.logger.debug(
-                "Message sent",
-                message_length=len(message),
-                message_preview=message[:100] + "..." if len(message) > 100 else message
-            )
+            self.logger.debug("Message sent", message_length=len(message))
         except BrokenPipeError:
             self.logger.warning("Connection closed by the client during send")
         except Exception as e:
