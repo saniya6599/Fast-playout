@@ -1,13 +1,17 @@
 import socket
+import time
 from CommonServices.Logger import Logger
+from CommonServices.logging_utils import log_function_call
 
 class TCPConnection:
     def __init__(self, host, port):
         self.host = host
         self.port = port
         self.socket = None
-        self.logger=Logger()
+        self.logger = Logger()
+        self.connection_count = 0
 
+    @log_function_call
     def start_server(self):
         try:
             # Create a new server socket and bind to the specified host and port
@@ -15,58 +19,85 @@ class TCPConnection:
             self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server_socket.bind((self.host, self.port))
             self.server_socket.listen(1)
-            print(f"[INFO] Listening for connections on {self.host}:{self.port}")
-            self.logger.info(f"Listening for connections on {self.host}:{self.port}")
+            
+            self.logger.log_connection_event(
+                "server_started", 
+                self.host, 
+                self.port, 
+                success=True
+            )
         except Exception as e:
-            print("[ERROR] Error creating server socket :", e)
-            self.logger.error("Error creating server socket :", e)
-            if self.server_socket:
+            self.logger.log_connection_event(
+                "server_started", 
+                self.host, 
+                self.port, 
+                success=False, 
+                error=e
+            )
+            if hasattr(self, 'server_socket') and self.server_socket:
                 self.server_socket.close()
 
+    @log_function_call
     def accept_connection(self):
         try:
             conn, addr = self.server_socket.accept()
-            # self.logger.info(f"[INFO] Connection established with {addr}")
-            #print(f"Connection established with {addr}")
-            #self.logger.info(f"Connection established with {addr}")
+            self.connection_count += 1
+            
+            self.logger.log_connection_event(
+                "accepted", 
+                addr[0], 
+                addr[1], 
+                success=True,
+                connection_id=self.connection_count
+            )
             return conn
         except Exception as e:
-            print("[ERROR] Error establishing connection : ", e)
-            self.logger.error("Error establishing connection : ", e)
+            self.logger.log_connection_event(
+                "accepted", 
+                self.host, 
+                self.port, 
+                success=False, 
+                error=e
+            )
             return None
 
+    @log_function_call
     def receive_message(self, conn):
         try:
             data = conn.recv(2048 * 10)
             if data:
-                #print("Received message:", data.decode())
-                return data.decode()
+                message = data.decode()
+                self.logger.debug(
+                    "Message received",
+                    message_length=len(message),
+                    message_preview=message[:100] + "..." if len(message) > 100 else message
+                )
+                return message
             else:
-                print("[WARNING] Connection closed by the client")
-                self.logger.warning("Connection closed by the client.")
+                self.logger.warning("Connection closed by the client")
                 return None
         except Exception as e:
-            print(f"[ERROR] Error receiving message: {e}")
+            self.logger.log_exception(e, context={'operation': 'receive_message'})
             return None
 
+    @log_function_call
     def send_message(self, conn, message):
         try:
-            # encoded_message = message.encode('utf-8')  # Encode message using UTF-8
             conn.sendall(message.encode())
-            # self.logger.info(f"[INFO] Message sent: {message}")
-            #print("Message sent:", message)
-        # except BrokenPipeError:
-        #     print("[WARNING] Connection closed by the client.")
-        #     self.logger.warning("Connection closed by the client.")
+            self.logger.debug(
+                "Message sent",
+                message_length=len(message),
+                message_preview=message[:100] + "..." if len(message) > 100 else message
+            )
+        except BrokenPipeError:
+            self.logger.warning("Connection closed by the client during send")
         except Exception as e:
-            # self.logger.error(f"Error sending message: {e}")
-            print(f"[ERROR] Error sending message: {e}")
+            self.logger.log_exception(e, context={'operation': 'send_message'})
 
+    @log_function_call
     def close_connection(self, conn):
         try:
             conn.close()
-            # self.logger.info("Connection closed.")
-            # print("[INFO] Connection closed.")
+            self.logger.debug("Connection closed successfully")
         except Exception as e:
-            self.logger.error(f"[ERROR] Error closing connection: {e}")
-            print(f"[ERROR] Error closing connection: {e}")
+            self.logger.log_exception(e, context={'operation': 'close_connection'})

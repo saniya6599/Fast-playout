@@ -29,17 +29,24 @@ def start_metadata_processor(json_file, content_dir):
 def main():
    
     global_context = GlobalContext()
-    logger=Logger()
-    service =live_service()
-    check=check_status()    
-    recovery=AutoRecovery()
+    logger = Logger()
+    service = live_service()
+    check = check_status()    
+    recovery = AutoRecovery()
     config = Config()
+    
+    logger.log_operation_start("application_startup")
     config.load_config("config.json")     
 
-    global_context.set_value('melted_executable_path',config.get('melted_executable_path'))
+    global_context.set_value('melted_executable_path', config.get('melted_executable_path'))
     global_context.set_value('melted_port', config.get('melted_port'))
     global_context.set_value('listener_port', config.get('listener_port'))
     global_context.set_value('normalise_som', config.get('normalise_som'))
+    
+    logger.info("Configuration loaded successfully", 
+                melted_path=config.get('melted_executable_path'),
+                melted_port=config.get('melted_port'),
+                listener_port=config.get('listener_port'))
     
     # global_context.set_value('udp_packet_ip',config.get('Udp_packet').split(':')[0])    #now need to take it from external command (config manager)
     # global_context.set_value('udp_packet_port',config.get('Udp_packet').split(':')[1])
@@ -58,13 +65,11 @@ def main():
 
     from Modules.melted.MeltedClient import MeltedClient
 
-
-    print("Initiating Server APIs")
+    logger.log_operation_start("api_server_startup")
     api_listener = APIListener()
     api_thread = Thread(target=api_listener.start_api_server, daemon=True) 
     api_thread.start()
-    print("Server APIs hosted, port : 8080")
-    # logger.info("Server APIs hotsed, port : 8080")
+    logger.log_operation_end("api_server_startup", success=True)
     
      # Initialize and configure AutoRecovery
     # auto_recovery = AutoRecovery(global_context, logger)
@@ -76,14 +81,15 @@ def main():
         time.sleep(1)
 
     
-    print("Recieved configuration successfully. Starting server & TCP connection...")
-    logger.info("Recieved configuration successfully. Starting server & TCP connection...")
-    client=MeltedClient()
+    logger.log_operation_start("playback_server_startup")
+    logger.info("Received configuration successfully. Starting server & TCP connection...")
+    client = MeltedClient()
     client.start_melted_server()
     # client.start_melted_with_tmux()
     
     tcp_connection = TCPConnection(global_context.get_value("host"), global_context.get_value("port"))
     tcp_connection.start_server()
+    logger.log_operation_end("playback_server_startup", success=True)
     
     
     # if global_context.get_value('Isauto_recovery') and global_context.get_value("startfrom"):
@@ -94,19 +100,16 @@ def main():
       try:
         conn = tcp_connection.accept_connection()   
         if conn is None:
-            print("Failed to establish connection..Trying again")
-            logger.info("Failed to establish connection..Trying again")
+            logger.warning("Failed to establish connection, retrying...")
             continue  # Continue to the next iteration of the loop if connection failed
 
         command = tcp_connection.receive_message(conn)
         
-        # if "CHECK-STATUS" not in command:
-        if all(word not in command for word in ["CHECK-STATUS", "FETCH","POLL","STATE"]):    
-         logger.info(f"ACTION RECIEVED : {command}")
+        # Log command received with proper filtering
+        logger.log_command_received(command, source="tcp")
 
         if command is None:
-            print("Received empty command or connection closed. Continuing...")
-            logger.info("Received empty command or connection closed. Continuing...")
+            logger.warning("Received empty command or connection closed, continuing...")
             tcp_connection.close_connection(conn)
             continue  
 
@@ -402,17 +405,18 @@ def main():
         tcp_connection.close_connection(conn)
          
       except KeyboardInterrupt:
+          logger.log_operation_start("application_shutdown")
           client.kill_melted_forcefully()   
           if(global_context.get_value('Isauto_recovery')):
             logger.info("Application interrupted. Performing cleanup and recovery!")
-            print("Application interrupted. Performing cleanup and recovery...")
             recovery.perform_recovery()
+            logger.log_operation_end("application_shutdown", success=True)
             break
           else:
-              logger.info("Shutting Down without recovery")
-              print('Shutting Down without recovery')
+              logger.info("Shutting down without recovery")
+              logger.log_operation_end("application_shutdown", success=True)
       except Exception as e:
-            print(f"Unexpected error: {e}")
+            logger.log_exception(e, context={'operation': 'main_loop'})
             # print("Application interrupted. Performing cleanup and recovery...")
             # recovery.perform_recovery()
             # break
