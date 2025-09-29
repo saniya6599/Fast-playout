@@ -1,4 +1,7 @@
+from datetime import datetime, timezone, timedelta
+import inspect
 import json
+import os
 import socket
 import time
 from flask import jsonify
@@ -8,6 +11,7 @@ from CommonServices.Global_context import GlobalContext
 from CommonServices.DataFrameManager import DataFrameManager
 from CommonServices.Time_management import timemgt
 from CommonServices.Logger import Logger
+import pytz
 
 class ScteService:
     def __init__(self):
@@ -17,7 +21,6 @@ class ScteService:
 
 
     logger=Logger()
-
     def process_scte_marker(self,df,pri_eventtime, scte_eventtime,scte_guid: dict,inventory,primary_duration,scte_duration):
         
         
@@ -256,6 +259,234 @@ class ScteService:
         except Exception as e:
             raise Exception(f"An error occurred: {str(e)}")
 
+    def process_scte_marker_tsduct(self, df, pri_eventtime, scte_eventtime, scte_guid: dict, inventory, primary_duration, scte_duration):
+        try:
+            self.logger.info("Preparing to trigger SCTE marker via file update")
+
+            if not pri_eventtime or not primary_duration:
+                self.logger.error("Missing required event time or duration")
+                return False
+
+            event_time_frames = self.parse_time_to_frames(pri_eventtime) + self.parse_time_to_frames(primary_duration)
+            event_time = self.frames_to_time_format(event_time_frames)
+            # self.logger.debug(f"[{__file__}:{inspect.currentframe().f_lineno}] Calculated event_time: {event_time}")
+
+            commercial_duration = (
+                (self.calculate_total_scte_frames(scte_guid)) / 25
+                if scte_duration == "00:00:00:00"
+                else self.parse_time_to_frames(scte_duration) / 25
+            )
+            self.logger.info(f"Total Commercial Duration: {commercial_duration} seconds")
+
+            # Determine splice_immediate and segment type
+            splice_immediate = "ON" in inventory.upper()
+            seg_type_id = "0x30" if splice_immediate else "0x31"
+
+            # Compute offset-adjusted frames
+            offset = int(self.global_context.get_value("scte35_offset") or 0)
+            event_time_frames += offset
+            
+            
+            while True:
+                
+                
+                system_time = timemgt.get_system_time_ltc()
+                system_time_frames = self.parse_time_to_frames(system_time)
+                # self.logger.debug(f"[{__file__}:{inspect.currentframe().f_lineno}] System Time Frames: {system_time_frames}, Event Time Frames: {event_time_frames}")
+
+                if system_time_frames >= event_time_frames:
+                    # Prepare XML content using helper method
+                    xml_content = self.build_scte_xml_tsduct(
+                        splice_immediate=splice_immediate,
+                        commercial_duration=commercial_duration,
+                        seg_type_id=seg_type_id,
+                        event_time_frames=event_time_frames
+                    )
+
+                    # Validate XML content
+                    if not xml_content.strip().startswith("<?xml"):
+                        self.logger.error(f"Invalid XML content generated")
+                        return False
+
+                    # Write XML to file
+                    xml_path = os.path.join(os.path.dirname(self.global_context.get_value("melted_executable_path")),"cue.xml")
+                    
+                    
+
+                    # Write XML to file
+                    with open(xml_path, "w", encoding="utf-8") as f:
+                        f.write(xml_content)
+                    
+                    
+                    with open(xml_path, "w", encoding="utf-8") as f:
+                        f.write(xml_content)
+                    self.logger.info(f"SCTE XML updated for TSDuck injection at {system_time}")
+                    print(f"[INFO] SCTE XML written to {xml_path}")
+                    self.global_context.set_value("IsScteOn", True)
+
+                    return True
+                # else:
+                #     self.logger.warning("SCTE trigger skipped - system time not reached event time")
+                #     return False
+
+        except Exception as e:
+            self.logger.error("Error while updating SCTE XML: {str(e)}")
+            print(f"Error: {str(e)}")
+            return False
+
+    def build_scte_xml_tsduct(self, splice_immediate: bool, commercial_duration: float, seg_type_id: str, event_time_frames: int) -> str:
+        """
+        Generate SCTE-35 XML for TSDuck spliceinject plugin.
+        """
+        event_id = int(datetime.datetime.now().timestamp())
+        duration_ticks = int(commercial_duration * 90000)  # 90k ticks/sec
+        self.logger.debug(" Building XML: event_id={event_id}, duration_ticks={duration_ticks}")
+
+        if splice_immediate:
+            return f"""<?xml version="1.0" encoding="UTF-8"?>
+    <tsduck>
+    <splice_information_table
+        protocol_version="0"
+        splice_command="splice_insert"
+        splice_event_id="{event_id}"
+        splice_event_cancel_indicator="false"
+        out_of_network_indicator="true"
+        program_splice_flag="true"
+        splice_immediate_flag="true">
+        <descriptors>
+        <segmentation_descriptor
+            segmentation_event_id="{event_id}"
+            segmentation_event_cancel_indicator="false"
+            segmentation_duration="{duration_ticks}"
+            segmentation_upid_type="0x0"
+            segmentation_type_id="{seg_type_id}"
+            segment_num="1"
+            segments_expected="1"/>
+        </descriptors>
+    </splice_information_table>
+    </tsduck>
+    """
+        else:
+            pts_time = event_time_frames * 300  # Convert frames to PTS ticks (90k/300 = 300 per frame)
+            return f"""<?xml version="1.0" encoding="UTF-8"?>
+    <tsduck>
+    <splice_information_table
+        protocol_version="0"
+        splice_command="time_signal"
+        pts_time="{pts_time}">
+        <descriptors>
+        <segmentation_descriptor
+            segmentation_event_id="{event_id}"
+            segmentation_event_cancel_indicator="false"
+            segmentation_duration="{duration_ticks}"
+            segmentation_upid_type="0x0"
+            segmentation_type_id="{seg_type_id}"
+            segment_num="1"
+            segments_expected="1"/>
+        </descriptors>
+    </splice_information_table>
+    </tsduck>
+    """
+
+
+    def trigger_scte_titan(self, df, pri_eventtime, scte_eventtime, scte_guid: dict, inventory,
+                           primary_duration, scte_duration):
+        """
+        Trigger SCTE marker via Titan Live API.
+        Validates input, builds XML payload, and posts to Titan endpoint.
+        """
+        try:
+            self.logger.info(f"Preparing SCTE trigger via Titan API")
+
+            # ----------------- Validation -----------------
+            if not pri_eventtime or not primary_duration:
+                self.logger.error(f" Missing primary event time/duration")
+                return False
+
+            titan_url = self.global_context.get_value("titan_api_url")
+            if not titan_url:
+                self.logger.error(f"Titan API URL not set")
+                return False
+
+            # ----------------- Time Calculations -----------------
+            event_time_frames = self.parse_time_to_frames(pri_eventtime) + self.parse_time_to_frames(primary_duration)
+            event_time = self.frames_to_time_format(event_time_frames)
+
+            commercial_duration = (
+                (self.calculate_total_scte_frames(scte_guid)) / 25
+                if scte_duration == "00:00:00:00"
+                else self.parse_time_to_frames(scte_duration) / 25
+            )
+            self.logger.info(f"Commercial duration: {commercial_duration} seconds")
+
+
+            offset = int(self.global_context.get_value("scte35_offset") or 0)
+            event_time_frames += offset
+
+            # ----------------- Build XML -----------------
+            xml_content = self.build_scte_xml_titan(
+                commercial_duration=commercial_duration,
+                event_time=event_time
+            )
+
+            if not xml_content.strip().startswith("<?xml"):
+                self.logger.error(f"Invalid XML generated")
+                return False
+
+            self.logger.info(f"Generated XML: {xml_content}")
+
+            # ----------------- API Request -----------------
+            headers = {"Content-Type": "application/xml"}
+            response = requests.post(titan_url, headers=headers, data=xml_content, timeout=5)
+
+            # ----------------- Response Handling -----------------
+            if response.status_code == 200:
+                if "WARNING" in response.text.upper():
+                    self.logger.warning(f"Titan responded with warning: {response.text.strip()}")
+                else:
+                    self.logger.info(f"SCTE successfully triggered on Titan")
+                self.global_context.set_value("IsScteOn", True)
+                return True
+            else:
+                self.logger.error(f"Titan API failed. "
+                                  f"Status: {response.status_code}, Response: {response.text.strip()}")
+                return False
+
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Network error while hitting Titan API: {str(e)}")
+
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Unexpected error in SCTE trigger: {str(e)}")
+            
+            return False
+
+
+    def build_scte_xml_titan(self, commercial_duration: int, event_time: str) -> str:
+        """
+        Generate SCTE-35 XML for Titan Live API.
+        """
+        # Parse event_time string into a datetime (assuming hh:mm:ss:ff, dropping frames)
+        
+        utcpoint = pytz.timezone("Asia/Kolkata").localize(
+                    datetime.strptime(event_time.rsplit(":", 1)[0], "%H:%M:%S").replace(
+                        year=datetime.now().year, month=datetime.now().month, day=datetime.now().day
+                    )
+                ).astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+        xml_template = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                        <ns2:SignalProcessingNotification xmlns:ns2="urn:cablelabs:iptvservices:esam:xsd:signal:1" xmlns="urn:cablelabs:md:xsd:signaling:3.0" xmlns:ns4="urn:cablelabs:md:xsd:content:3.0" xmlns:ns3="urn:cablelabs:md:xsd:core:3.0" xmlns:ns5="urn:cablelabs:iptvservices:esam:xsd:common:1" xmlns:ns6="urn:cablelabs:iptvservices:esam:xsd:manifest:1">
+                        <ns2:ResponseSignal action="create" acquisitionPointIdentity="{self.global_context.get_value('acquisitionPointIdentity')}" acquisitionSignalID="{self.global_context.get_value('acquisitionSignalID')}">
+                            <UTCPoint utcPoint="{utcpoint}"/>
+                            <SCTE35PointDescriptor spliceCommandType="5">
+                                <SpliceInsert spliceEventID="789101" autoReturn="true" duration="PT{commercial_duration}S" uniqueProgramID="4" availNum="0" availsExpected="1" outOfNetworkIndicator="true"/>
+                            </SCTE35PointDescriptor>
+                        </ns2:ResponseSignal>
+                        </ns2:SignalProcessingNotification>
+                        """
+        return xml_template
 
 
     def frames_to_time_format(self,total_frames):

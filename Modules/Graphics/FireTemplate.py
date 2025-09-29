@@ -47,14 +47,20 @@ def FireTemplate(df, sec_guids, primary_event_time,primary_duration):
             event_time_str = df.loc[df['GUID'] == guid, 'EventTime'].values[0]
             inventory = df.loc[df['GUID'] == guid, 'Inventory'].values[0]
             duration = df.loc[df['GUID'] == guid, 'Duration'].values[0]
+            mode = (global_context.get_value('scte_mode') or "").strip().lower()
             
             
             # scte marker alert
             if (str(inventory).startswith("SCTEON")):
                 if(global_context.get_value('IsScte')):
                     # print(f"SCTE marker detected : {inventory}; sending UDP packet!")
-                    threading.Thread(target=scte_service.process_scte_marker, args=(df,primary_event_time,event_time_str,guid,inventory,primary_duration,duration)).start()
-                    break
+                    # threading.Thread(target=scte_service.process_scte_marker, args=(df,primary_event_time,event_time_str,guid,inventory,primary_duration,duration)).start()
+                    if mode == 'external': 
+                        threading.Thread(target=scte_service.trigger_scte_titan, args=(df,primary_event_time,event_time_str,guid,inventory,primary_duration,duration)).start()
+                        break
+                    elif mode == 'internal':
+                        threading.Thread(target=scte_service.process_scte_marker, args=(df,primary_event_time,event_time_str,guid,inventory,primary_duration,duration)).start()
+                        break
                 else : 
                     logger.info(f"Scte is disabled for channel : {global_context.get_value('channel_name')}")
                     break

@@ -345,7 +345,7 @@ class MeltedClient:
 
                     current_on_air_guid = self.global_context.get_value("onair_guid")
                     
-
+                   
                     if previous_on_air_guid != current_on_air_guid:
                        
                         segment, duration, som, reckonkey, playlist = self.handle_guid_change(previous_on_air_guid, current_on_air_guid, filename)
@@ -625,6 +625,7 @@ class MeltedClient:
                         self.df_manager.toggle_up_dataframe()
                         # self.global_context.set_value('sync',1)
 
+                        
                         #threading.Thread(target=self.append_remaining_inventory, args=(df, guids, guid)).start()
                         self.start_append_thread(df,guids,guid)
                         self.start_update_thread()
@@ -2186,7 +2187,11 @@ class MeltedClient:
             #     current_index = current_index[0]
             
              # Get current on-air primary index from global context
-            onair_indice = self.global_context.get_value('onair_indice')
+            
+            try:
+                onair_indice = int(self.global_context.get_value('onair_indice'))
+            except (TypeError, ValueError):
+                onair_indice = 0
 
             if onair_indice != "":
                 onair_indice = int(onair_indice)

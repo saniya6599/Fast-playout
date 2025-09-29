@@ -2,5 +2,8 @@
     "melted_executable_path":"/home/saniya/melted/src/melted/src/melted",
     "melted_port": 5250,
     "listener_port": 8080,
-    "normalise_som" : false
+    "normalise_som" : false,
+    "titan_api_url" : "http://65.2.167.109:4000/scc/signal",
+    "acquisitionPointIdentity" : "TEST1",
+    "acquisitionSignalID" : "TEST1"
 }

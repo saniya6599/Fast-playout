@@ -80,6 +80,7 @@ class APIListener:
             scte35 = data.get("scte35")
             scte35_type = data.get("scte35_type")
             scte35_offset = data.get("scte35_offset")
+            scte_mode=data.get("scte_mode")
             
             auto_recovery=data.get("auto_recovery")
             
@@ -163,7 +164,8 @@ class APIListener:
                 if(self.global_context.get_value("IsScte")):
                     self.global_context.set_value("scte_type",str(scte35_type).upper())
                     self.global_context.set_value("scte35_offset",scte35_offset)
-                    self.logger.info(f"SCTE enabled with type: {scte35_type} & offset: {scte35_offset}")
+                    self.global_context.set_value("scte_mode",scte_mode)
+                    self.logger.info(f"SCTE enabled with type: {scte35_type}, mode: {scte_mode} & offset: {scte35_offset}")
                     print(f"[INFO] SCTE enabled with type: {scte35_type} & offset: {scte35_offset}")
                 else:
                     print(f"[WARNING] SCTE insertions are disabled for channel: {channel_name}")

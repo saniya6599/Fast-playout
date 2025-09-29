@@ -42,6 +42,9 @@ def main():
     global_context.set_value('melted_port', config.get('melted_port'))
     global_context.set_value('listener_port', config.get('listener_port'))
     global_context.set_value('normalise_som', config.get('normalise_som'))
+    global_context.set_value('titan_api_url', config.get('titan_api_url'))
+    global_context.set_value('acquisitionPointIdentity', config.get('acquisitionPointIdentity'))
+    global_context.set_value('acquisitionSignalID', config.get('acquisitionSignalID'))
     
     logger.info("Configuration loaded successfully", 
                 melted_path=config.get('melted_executable_path'),
